@@ -89,6 +89,10 @@ export default function Division() {
     return p ? `${p.name[0]}.${p.surname}` : '...'
   }
 
+  function teamLabel(name) {
+    return name?.replace(/^Team\s*/i, '') ?? ''
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -133,7 +137,7 @@ export default function Division() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
-                <th className="px-5 py-2.5">Team</th>
+                <th className="px-5 py-2.5">#</th>
                 <th className="px-5 py-2.5">#1</th>
                 <th className="px-5 py-2.5">#2</th>
                 <th className="px-5 py-2.5"></th>
@@ -152,7 +156,7 @@ export default function Division() {
 
                 return (
                   <tr key={team.id} className={`hover:bg-gray-50/50 ${isMyTeam ? 'bg-emerald-50/30' : ''}`}>
-                    <td className="px-5 py-3 font-medium text-gray-800">{team.name}</td>
+                    <td className="px-5 py-3 font-medium text-gray-800">{teamLabel(team.name)}</td>
                     <td className="px-5 py-3">
                       {team.player1_id ? (
                         <span className={team.player1_id === user?.uid ? 'text-emerald-600 font-medium' : 'text-gray-700'}>
@@ -213,24 +217,27 @@ export default function Division() {
                 const home = teams.find((t) => t.id === m.home_team_id)
                 const away = teams.find((t) => t.id === m.away_team_id)
                 const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
-                const homePlayers = [home?.player1_id, home?.player2_id].filter(Boolean).map(playerName).join(' · ')
-                const awayPlayers = [away?.player1_id, away?.player2_id].filter(Boolean).map(playerName).join(' · ')
+                const homePlayers = [home?.player1_id, home?.player2_id].filter(Boolean).map(playerName).join(', ')
+                const awayPlayers = [away?.player1_id, away?.player2_id].filter(Boolean).map(playerName).join(', ')
                 return (
                   <div key={m.id} className="px-5 py-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-gray-800 truncate">
-                        {home?.name} <span className="text-gray-300 font-normal">vs</span> {away?.name}
-                      </p>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[m.status] || ''}`}>
-                          {STATUS_LABEL[m.status] || m.status}
-                        </span>
+                    <div className="grid grid-cols-[1fr_24px_1fr] items-start gap-x-1 mb-1.5">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800">{teamLabel(home?.name)}</p>
+                        <p className="text-xs text-gray-400 leading-tight">{homePlayers}</p>
+                      </div>
+                      <p className="text-xs text-gray-300 text-center pt-0.5">vs</p>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800">{teamLabel(away?.name)}</p>
+                        <p className="text-xs text-gray-400 leading-tight">{awayPlayers}</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {homePlayers} <span className="text-gray-200 mx-1">|</span> {awayPlayers}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[m.status] || ''}`}>
+                        {STATUS_LABEL[m.status] || m.status}
+                      </span>
+                    </div>
                   </div>
                 )
               })}
