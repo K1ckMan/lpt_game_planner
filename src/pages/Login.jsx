@@ -37,7 +37,8 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="grow flex items-center justify-center p-4">
       <div className="bg-white border border-gray-200 rounded-lg p-8 w-full max-w-sm">
         <div className="text-center mb-8">
           <img
@@ -70,6 +71,7 @@ export default function Login() {
             Sign in with Facebook
           </button>
         </div>
+      </div>
       </div>
       <Footer />
     </div>
