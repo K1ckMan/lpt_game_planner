@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export default function PostResultModal({ match, homeTeam, awayTeam, profiles, onClose }) {
   const [sets, setSets] = useState([
@@ -9,6 +9,11 @@ export default function PostResultModal({ match, homeTeam, awayTeam, profiles, o
   const [photo, setPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
   const fileRef = useRef()
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   function pName(uid) {
     if (!uid) return ''

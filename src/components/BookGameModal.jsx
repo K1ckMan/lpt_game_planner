@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -20,6 +20,11 @@ export default function BookGameModal({ divisionId, myTeam, opponents, onClose, 
   const [time, setTime] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
 
   const awayTeam = opponents.find((t) => t.id === awayTeamId)
   const slots = getMockSlots(date)
