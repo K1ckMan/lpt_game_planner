@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 const LEAGUES = [
   { id: 'gold', label: 'Gold League', sub: 'Gold', desc: 'Top Division', color: 'text-amber-600', border: 'border-amber-200 hover:border-amber-400' },
@@ -11,9 +12,9 @@ export default function LeagueSelect() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      <div className="max-w-2xl mx-auto px-4 py-10">
+      <div className="max-w-2xl mx-auto px-4 py-10 flex-1">
         <h1 className="text-xl font-semibold text-gray-900 mb-1">Select League</h1>
         <p className="text-sm text-gray-500 mb-6">Choose your skill level</p>
 
@@ -31,6 +32,7 @@ export default function LeagueSelect() {
           ))}
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

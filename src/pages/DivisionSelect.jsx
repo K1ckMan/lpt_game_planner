@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
 
 const LEAGUE_LABELS = {
   gold: 'Gold League',
@@ -12,9 +13,9 @@ export default function DivisionSelect() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      <div className="max-w-2xl mx-auto px-4 py-10">
+      <div className="max-w-2xl mx-auto px-4 py-10 flex-1">
         <button
           onClick={() => navigate('/leagues')}
           className="text-sm text-gray-400 hover:text-gray-600 mb-4 block"
@@ -37,6 +38,7 @@ export default function DivisionSelect() {
           ))}
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

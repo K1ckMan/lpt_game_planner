@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import BookGameModal from '../components/BookGameModal'
 import PostResultModal from '../components/PostResultModal'
+import Footer from '../components/Footer'
 
 const LEAGUE_LABELS = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' }
 
@@ -112,7 +113,7 @@ export default function Division() {
   const activeMatches = matches.filter((m) => m.status !== 'cancelled')
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
       <div className="max-w-5xl mx-auto px-4 py-8">
 
@@ -275,6 +276,7 @@ export default function Division() {
           onBooked={loadMatches}
         />
       )}
+      <Footer />
     </div>
   )
 }
