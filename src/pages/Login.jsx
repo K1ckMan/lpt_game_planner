@@ -4,6 +4,7 @@ import { signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'fireb
 import { auth } from '../lib/firebase'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import Footer from '../components/Footer'
 
 const googleProvider = new GoogleAuthProvider()
 const facebookProvider = new FacebookAuthProvider()
@@ -36,7 +37,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="bg-white border border-gray-200 rounded-lg p-8 w-full max-w-sm">
         <div className="text-center mb-8">
           <img
@@ -70,6 +71,7 @@ export default function Login() {
           </button>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }
