@@ -219,14 +219,18 @@ export default function Division() {
                 const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
                 return (
                   <div key={m.id} className="px-5 py-3">
-                    <div className="grid grid-cols-[1fr_24px_1fr] gap-x-1 gap-y-0.5">
-                      <p className="text-xs text-gray-800 col-start-1 row-start-1">{playerName(home?.player1_id)}</p>
-                      <p className="text-xs text-gray-300 text-center col-start-2 row-start-1 row-span-2 flex items-center justify-center">vs</p>
-                      <p className="text-xs text-gray-800 col-start-3 row-start-1">{playerName(away?.player1_id)}</p>
-                      <p className="text-xs text-gray-800 col-start-1 row-start-2">{playerName(home?.player2_id)}</p>
-                      <p className="text-xs text-gray-800 col-start-3 row-start-2">{playerName(away?.player2_id)}</p>
+                    <div className="flex items-start gap-2">
+                      <div>
+                        <p className="text-xs text-gray-800">{playerName(home?.player1_id)}</p>
+                        <p className="text-xs text-gray-800">{playerName(home?.player2_id)}</p>
+                      </div>
+                      <span className="text-xs text-gray-300 pt-0.5 shrink-0">vs</span>
+                      <div>
+                        <p className="text-xs text-gray-800">{playerName(away?.player1_id)}</p>
+                        <p className="text-xs text-gray-800">{playerName(away?.player2_id)}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-center gap-2 mt-2">
+                    <div className="flex items-center justify-center gap-2 mt-1.5">
                       <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
                       <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[m.status] || ''}`}>
                         {STATUS_LABEL[m.status] || m.status}
