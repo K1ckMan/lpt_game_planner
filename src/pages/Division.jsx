@@ -217,22 +217,22 @@ export default function Division() {
                 const home = teams.find((t) => t.id === m.home_team_id)
                 const away = teams.find((t) => t.id === m.away_team_id)
                 const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
-                const homePlayers = [home?.player1_id, home?.player2_id].filter(Boolean).map(playerName).join(', ')
-                const awayPlayers = [away?.player1_id, away?.player2_id].filter(Boolean).map(playerName).join(', ')
                 return (
                   <div key={m.id} className="px-5 py-3">
-                    <div className="grid grid-cols-[1fr_24px_1fr] items-start gap-x-1 mb-1.5">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-800">{teamLabel(home?.name)}</p>
-                        <p className="text-xs text-gray-400 leading-tight">{homePlayers}</p>
-                      </div>
-                      <p className="text-xs text-gray-300 text-center pt-0.5">vs</p>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-800">{teamLabel(away?.name)}</p>
-                        <p className="text-xs text-gray-400 leading-tight">{awayPlayers}</p>
-                      </div>
+                    <div className="grid grid-cols-[1fr_28px_1fr] gap-x-1">
+                      <p className="text-xs font-semibold text-gray-500">{teamLabel(home?.name)}</p>
+                      <span />
+                      <p className="text-xs font-semibold text-gray-500">{teamLabel(away?.name)}</p>
+
+                      <p className="text-xs text-gray-800">{playerName(home?.player1_id)}</p>
+                      <p className="text-xs text-gray-300 text-center leading-none mt-0.5">vs</p>
+                      <p className="text-xs text-gray-800">{playerName(away?.player1_id)}</p>
+
+                      <p className="text-xs text-gray-800">{playerName(home?.player2_id)}</p>
+                      <span />
+                      <p className="text-xs text-gray-800">{playerName(away?.player2_id)}</p>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-1.5">
                       <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
                       <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[m.status] || ''}`}>
                         {STATUS_LABEL[m.status] || m.status}
