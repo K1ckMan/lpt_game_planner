@@ -86,7 +86,7 @@ export default function Division() {
   function playerName(uid) {
     if (!uid) return null
     const p = profiles[uid]
-    return p ? `${p.name} ${p.surname}` : '...'
+    return p ? `${p.name[0]}.${p.surname}` : '...'
   }
 
   if (loading) {
@@ -134,8 +134,8 @@ export default function Division() {
             <thead>
               <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
                 <th className="px-5 py-2.5">Team</th>
-                <th className="px-5 py-2.5">Player 1</th>
-                <th className="px-5 py-2.5">Player 2</th>
+                <th className="px-5 py-2.5">#1</th>
+                <th className="px-5 py-2.5">#2</th>
                 <th className="px-5 py-2.5"></th>
               </tr>
             </thead>
@@ -214,16 +214,28 @@ export default function Division() {
                 const away = teams.find((t) => t.id === m.away_team_id)
                 const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
                 return (
-                  <div key={m.id} className="px-5 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">
-                        {home?.name} <span className="text-gray-300 mx-1">vs</span> {away?.name}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{dateStr} · {m.time}</p>
+                  <div key={m.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="text-right">
+                        <p className="text-xs font-medium text-gray-700">{home?.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {[home?.player1_id, home?.player2_id].filter(Boolean).map(playerName).join(' · ')}
+                        </p>
+                      </div>
+                      <span className="text-xs text-gray-300 shrink-0">vs</span>
+                      <div>
+                        <p className="text-xs font-medium text-gray-700">{away?.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {[away?.player1_id, away?.player2_id].filter(Boolean).map(playerName).join(' · ')}
+                        </p>
+                      </div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded ${STATUS_CLASS[m.status] || ''}`}>
-                      {STATUS_LABEL[m.status] || m.status}
-                    </span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <p className="text-xs text-gray-400">{dateStr} · {m.time}</p>
+                      <span className={`text-xs px-2 py-1 rounded ${STATUS_CLASS[m.status] || ''}`}>
+                        {STATUS_LABEL[m.status] || m.status}
+                      </span>
+                    </div>
                   </div>
                 )
               })}
