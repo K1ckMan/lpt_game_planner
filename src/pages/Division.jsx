@@ -1,0 +1,275 @@
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+import Navbar from '../components/Navbar'
+import BookGameModal from '../components/BookGameModal'
+
+const LEAGUE_LABELS = {
+  gold: 'Золотая',
+  silver: 'Серебряная',
+  bronze: 'Бронзовая',
+}
+
+const STATUS_LABEL = {
+  pending: 'Ожидает подтверждения',
+  confirmed: 'Подтверждено',
+  cancelled: 'Отменено',
+}
+
+const STATUS_CLASS = {
+  pending: 'text-amber-700 bg-amber-50',
+  confirmed: 'text-emerald-700 bg-emerald-50',
+  cancelled: 'text-red-600 bg-red-50',
+}
+
+export default function Division() {
+  const { league, division: divNum } = useParams()
+  const { user } = useAuth()
+  const navigate = useNavigate()
+
+  const divisionId = `${league}-${divNum}`
+  const fetchedUids = useRef(new Set())
+
+  const [teams, setTeams] = useState([])
+  const [profiles, setProfiles] = useState({})
+  const [matches, setMatches] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [bookingTeamId, setBookingTeamId] = useState(null)
+  const [joining, setJoining] = useState(null)
+
+  useEffect(() => {
+    loadData()
+
+    const channel = supabase
+      .channel(`div-${divisionId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, () => loadTeams())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => loadMatches())
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [divisionId])
+
+  useEffect(() => {
+    const newUids = teams
+      .flatMap((t) => [t.player1_id, t.player2_id])
+      .filter((uid) => uid && !fetchedUids.current.has(uid))
+
+    if (newUids.length === 0) return
+    newUids.forEach((uid) => fetchedUids.current.add(uid))
+
+    supabase
+      .from('users')
+      .select('id, name, surname')
+      .in('id', newUids)
+      .then(({ data }) => {
+        if (data) {
+          setProfiles((prev) => ({
+            ...prev,
+            ...Object.fromEntries(data.map((u) => [u.id, u])),
+          }))
+        }
+      })
+  }, [teams])
+
+  async function loadData() {
+    await Promise.all([loadTeams(), loadMatches()])
+    setLoading(false)
+  }
+
+  async function loadTeams() {
+    const { data } = await supabase
+      .from('teams')
+      .select('id, name, player1_id, player2_id')
+      .eq('division_id', divisionId)
+      .order('id')
+    setTeams(data || [])
+  }
+
+  async function loadMatches() {
+    const { data } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('division_id', divisionId)
+      .order('created_at', { ascending: false })
+    setMatches(data || [])
+  }
+
+  async function handleJoin(teamId, slot) {
+    const alreadyIn = teams.some(
+      (t) => t.player1_id === user.uid || t.player2_id === user.uid
+    )
+    if (alreadyIn) {
+      alert('Вы уже состоите в команде этого дивизиона')
+      return
+    }
+
+    setJoining(`${teamId}-${slot}`)
+    const { error } = await supabase
+      .from('teams')
+      .update({ [`${slot}_id`]: user.uid })
+      .eq('id', teamId)
+      .is(`${slot}_id`, null)
+
+    if (error) alert('Это место уже занято')
+    setJoining(null)
+  }
+
+  function playerName(uid) {
+    if (!uid) return null
+    const p = profiles[uid]
+    if (!p) return '...'
+    return `${p.name} ${p.surname}`
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="flex justify-center pt-20">
+          <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
+  const myTeamId = teams.find(
+    (t) => t.player1_id === user?.uid || t.player2_id === user?.uid
+  )?.id
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-sm text-gray-400 mb-6">
+          <button onClick={() => navigate('/leagues')} className="hover:text-gray-600">Лиги</button>
+          <span>/</span>
+          <button onClick={() => navigate(`/leagues/${league}`)} className="hover:text-gray-600">
+            {LEAGUE_LABELS[league]}
+          </button>
+          <span>/</span>
+          <span className="text-gray-700">Дивизион {divNum}</span>
+        </div>
+
+        <h1 className="text-xl font-semibold text-gray-900 mb-6">
+          {LEAGUE_LABELS[league]} лига — Дивизион {divNum}
+        </h1>
+
+        {/* Teams table */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <h2 className="font-medium text-gray-800">Команды</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
+                  <th className="px-5 py-2.5">Команда</th>
+                  <th className="px-5 py-2.5">Игрок 1</th>
+                  <th className="px-5 py-2.5">Игрок 2</th>
+                  <th className="px-5 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {teams.map((team) => {
+                  const full = team.player1_id && team.player2_id
+                  return (
+                    <tr key={team.id} className="hover:bg-gray-50/50">
+                      <td className="px-5 py-3 font-medium text-gray-800">{team.name}</td>
+                      <td className="px-5 py-3">
+                        {team.player1_id ? (
+                          <span className={team.player1_id === user?.uid ? 'text-emerald-600 font-medium' : 'text-gray-700'}>
+                            {playerName(team.player1_id)}
+                            {team.player1_id === user?.uid && ' (вы)'}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleJoin(team.id, 'player1')}
+                            disabled={!!joining || !!myTeamId}
+                            className="text-xs px-2.5 py-1 border border-dashed border-gray-300 text-gray-400 rounded hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            + Занять место
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {team.player2_id ? (
+                          <span className={team.player2_id === user?.uid ? 'text-emerald-600 font-medium' : 'text-gray-700'}>
+                            {playerName(team.player2_id)}
+                            {team.player2_id === user?.uid && ' (вы)'}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleJoin(team.id, 'player2')}
+                            disabled={!!joining || !!myTeamId}
+                            className="text-xs px-2.5 py-1 border border-dashed border-gray-300 text-gray-400 rounded hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                          >
+                            + Занять место
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {full ? (
+                          <button
+                            onClick={() => setBookingTeamId(team.id)}
+                            className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                          >
+                            Забронировать игру
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-300">Неполная команда</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Matches */}
+        {matches.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100">
+              <h2 className="font-medium text-gray-800">Запланированные игры</h2>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {matches.map((m) => {
+                const home = teams.find((t) => t.id === m.home_team_id)
+                const away = teams.find((t) => t.id === m.away_team_id)
+                const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
+                return (
+                  <div key={m.id} className="px-5 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {home?.name} vs {away?.name}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {dateStr} · {m.time}
+                      </p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded ${STATUS_CLASS[m.status] || ''}`}>
+                      {STATUS_LABEL[m.status] || m.status}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {bookingTeamId && (
+        <BookGameModal
+          divisionId={divisionId}
+          teams={teams}
+          bookingTeamId={bookingTeamId}
+          onClose={() => setBookingTeamId(null)}
+          onBooked={loadMatches}
+        />
+      )}
+    </div>
+  )
+}
