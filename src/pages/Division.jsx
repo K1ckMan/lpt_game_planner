@@ -219,18 +219,16 @@ export default function Division() {
                 const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
                 return (
                   <div key={m.id} className="px-5 py-3">
-                    <div className="grid grid-cols-[1fr_28px_1fr] gap-x-1">
-                      <p className="text-xs font-semibold text-gray-500">{teamLabel(home?.name)}</p>
-                      <span />
-                      <p className="text-xs font-semibold text-gray-500">{teamLabel(away?.name)}</p>
+                    <div className="grid grid-cols-[1fr_28px_1fr] gap-x-2 gap-y-0.5">
+                      <p className="text-xs font-semibold text-gray-400 col-start-1 row-start-1 pb-0.5">{teamLabel(home?.name)}</p>
+                      <p className="text-xs font-semibold text-gray-400 col-start-3 row-start-1 pb-0.5">{teamLabel(away?.name)}</p>
 
-                      <p className="text-xs text-gray-800">{playerName(home?.player1_id)}</p>
-                      <p className="text-xs text-gray-300 text-center leading-none mt-0.5">vs</p>
-                      <p className="text-xs text-gray-800">{playerName(away?.player1_id)}</p>
+                      <p className="text-xs text-gray-800 col-start-1 row-start-2">{playerName(home?.player1_id)}</p>
+                      <p className="text-xs text-gray-300 text-center col-start-2 row-start-2 row-span-2 flex items-center justify-center">vs</p>
+                      <p className="text-xs text-gray-800 col-start-3 row-start-2">{playerName(away?.player1_id)}</p>
 
-                      <p className="text-xs text-gray-800">{playerName(home?.player2_id)}</p>
-                      <span />
-                      <p className="text-xs text-gray-800">{playerName(away?.player2_id)}</p>
+                      <p className="text-xs text-gray-800 col-start-1 row-start-3">{playerName(home?.player2_id)}</p>
+                      <p className="text-xs text-gray-800 col-start-3 row-start-3">{playerName(away?.player2_id)}</p>
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
                       <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
