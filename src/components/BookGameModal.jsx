@@ -13,65 +13,54 @@ function getMockSlots(date) {
   return ALL_SLOTS.filter((_, i) => (seed + i * 7) % 3 !== 0)
 }
 
-export default function BookGameModal({ divisionId, homeTeam, awayTeam, onClose, onBooked }) {
+export default function BookGameModal({ divisionId, myTeam, opponents, onClose, onBooked }) {
   const { user } = useAuth()
+  const [awayTeamId, setAwayTeamId] = useState(opponents.length === 1 ? opponents[0].id : '')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const awayTeam = opponents.find((t) => t.id === awayTeamId)
   const slots = getMockSlots(date)
   const today = new Date().toISOString().split('T')[0]
 
   async function handleBook() {
-    if (!date || !time) {
-      setError('Please select a date and time')
+    if (!awayTeamId || !date || !time) {
+      setError('Please fill in all fields')
       return
     }
     setLoading(true)
     setError('')
     try {
       const requiredPlayers = [
-        homeTeam.player1_id,
-        homeTeam.player2_id,
-        awayTeam.player1_id,
-        awayTeam.player2_id,
+        myTeam.player1_id, myTeam.player2_id,
+        awayTeam.player1_id, awayTeam.player2_id,
       ].filter(Boolean)
 
-      const { data: match, error: matchErr } = await supabase
+      const { data: match, error: err } = await supabase
         .from('matches')
         .insert({
           division_id: divisionId,
-          home_team_id: homeTeam.id,
-          away_team_id: awayTeam.id,
-          date,
-          time,
+          home_team_id: myTeam.id,
+          away_team_id: awayTeamId,
+          date, time,
           status: 'pending',
           booked_by: user.uid,
           confirmed_by: [user.uid],
           required_players: requiredPlayers,
         })
-        .select()
-        .single()
-
-      if (matchErr) throw matchErr
+        .select().single()
+      if (err) throw err
 
       const dateFormatted = date.split('-').reverse().join('.')
-      const message = `New game: ${homeTeam.name} vs ${awayTeam.name} — ${dateFormatted} at ${time}. Please confirm your participation.`
-
-      const otherPlayers = requiredPlayers.filter((uid) => uid !== user.uid)
-      if (otherPlayers.length > 0) {
+      const message = `New game: ${myTeam.name} vs ${awayTeam.name} — ${dateFormatted} at ${time}. Please confirm.`
+      const others = requiredPlayers.filter((uid) => uid !== user.uid)
+      if (others.length > 0) {
         await supabase.from('notifications').insert(
-          otherPlayers.map((uid) => ({
-            user_id: uid,
-            match_id: match.id,
-            division_id: divisionId,
-            message,
-            read: false,
-          }))
+          others.map((uid) => ({ user_id: uid, match_id: match.id, division_id: divisionId, message, read: false }))
         )
       }
-
       onBooked?.()
       onClose()
     } catch {
@@ -86,14 +75,38 @@ export default function BookGameModal({ divisionId, homeTeam, awayTeam, onClose,
       <div className="bg-white rounded-lg w-full max-w-md">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-800">Book Game</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {homeTeam.name} <span className="text-gray-300 mx-1">vs</span> {awayTeam.name}
-          </p>
+          <p className="text-sm text-gray-500">{myTeam.name}</p>
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>
+          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>}
+
+          {/* Opponent — only shown if more than one unplayed */}
+          {opponents.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Opponent</label>
+              <div className="flex flex-wrap gap-2">
+                {opponents.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setAwayTeamId(t.id)}
+                    className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                      awayTeamId === t.id
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'border-gray-200 text-gray-700 hover:border-emerald-400'
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {opponents.length === 1 && (
+            <p className="text-sm text-gray-600">
+              vs <span className="font-medium">{opponents[0].name}</span>
+            </p>
           )}
 
           <div>
@@ -110,8 +123,7 @@ export default function BookGameModal({ divisionId, homeTeam, awayTeam, onClose,
           {date && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available time{' '}
-                <span className="text-gray-400 font-normal text-xs">(Playtomic)</span>
+                Available time <span className="text-gray-400 font-normal text-xs">(Playtomic)</span>
               </label>
               {slots.length === 0 ? (
                 <p className="text-sm text-gray-400">No available slots</p>
@@ -137,15 +149,12 @@ export default function BookGameModal({ divisionId, homeTeam, awayTeam, onClose,
         </div>
 
         <div className="px-5 py-4 border-t border-gray-100 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2 border border-gray-200 text-gray-600 rounded text-sm hover:bg-gray-50"
-          >
+          <button onClick={onClose} className="flex-1 py-2 border border-gray-200 text-gray-600 rounded text-sm hover:bg-gray-50">
             Cancel
           </button>
           <button
             onClick={handleBook}
-            disabled={loading || !date || !time}
+            disabled={loading || !awayTeamId || !date || !time}
             className="flex-1 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? 'Booking...' : 'Book Game'}
