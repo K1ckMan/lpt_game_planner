@@ -272,6 +272,7 @@ export default function Division() {
           divisionId={divisionId}
           myTeam={myTeam}
           opponents={[bookingOpponent]}
+          profiles={profiles}
           onClose={() => setBookingOpponent(null)}
           onBooked={loadMatches}
         />

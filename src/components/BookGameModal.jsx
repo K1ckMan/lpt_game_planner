@@ -13,7 +13,7 @@ function getMockSlots(date) {
   return ALL_SLOTS.filter((_, i) => (seed + i * 7) % 3 !== 0)
 }
 
-export default function BookGameModal({ divisionId, myTeam, opponents, onClose, onBooked }) {
+export default function BookGameModal({ divisionId, myTeam, opponents, profiles = {}, onClose, onBooked }) {
   const { user } = useAuth()
   const [awayTeamId, setAwayTeamId] = useState(opponents.length === 1 ? opponents[0].id : '')
   const [date, setDate] = useState('')
@@ -25,6 +25,16 @@ export default function BookGameModal({ divisionId, myTeam, opponents, onClose, 
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
+
+  function pName(uid) {
+    if (!uid) return ''
+    const p = profiles[uid]
+    return p ? `${p.name[0]}.${p.surname}` : '...'
+  }
+
+  function teamPlayers(team) {
+    return [team?.player1_id, team?.player2_id].filter(Boolean).map(pName).join(' / ')
+  }
 
   const awayTeam = opponents.find((t) => t.id === awayTeamId)
   const slots = getMockSlots(date)
@@ -77,10 +87,10 @@ export default function BookGameModal({ divisionId, myTeam, opponents, onClose, 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-md">
+      <div className="bg-white rounded-lg w-full max-w-md overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-800">Book Game</h2>
-          <p className="text-sm text-gray-500">{myTeam.name}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{teamPlayers(myTeam)}</p>
         </div>
 
         <div className="px-5 py-4 space-y-4">
@@ -89,19 +99,19 @@ export default function BookGameModal({ divisionId, myTeam, opponents, onClose, 
           {/* Opponent — only shown if more than one unplayed */}
           {opponents.length > 1 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Opponent</label>
+              <label className="block text-xs text-gray-500 mb-2">Opponent</label>
               <div className="flex flex-wrap gap-2">
                 {opponents.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => setAwayTeamId(t.id)}
-                    className={`px-3 py-1.5 text-sm rounded border transition-colors ${
+                    className={`px-3 py-1.5 text-xs rounded border transition-colors ${
                       awayTeamId === t.id
                         ? 'bg-emerald-600 text-white border-emerald-600'
                         : 'border-gray-200 text-gray-700 hover:border-emerald-400'
                     }`}
                   >
-                    {t.name}
+                    {teamPlayers(t)}
                   </button>
                 ))}
               </div>
@@ -110,7 +120,7 @@ export default function BookGameModal({ divisionId, myTeam, opponents, onClose, 
 
           {opponents.length === 1 && (
             <p className="text-sm text-gray-600">
-              vs <span className="font-medium">{opponents[0].name}</span>
+              vs <span className="font-medium">{teamPlayers(opponents[0])}</span>
             </p>
           )}
 
@@ -121,7 +131,7 @@ export default function BookGameModal({ divisionId, myTeam, opponents, onClose, 
               value={date}
               min={today}
               onChange={(e) => { setDate(e.target.value); setTime('') }}
-              className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full max-w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
 
