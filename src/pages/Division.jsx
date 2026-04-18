@@ -115,7 +115,7 @@ export default function Division() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl w-full mx-auto px-4 py-8 grow">
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-sm text-gray-400 mb-6">

@@ -15,7 +15,7 @@ export default function DivisionSelect() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      <div className="max-w-2xl mx-auto px-4 py-10 flex-1">
+      <div className="max-w-2xl w-full mx-auto px-4 py-10 grow">
         <button
           onClick={() => navigate('/leagues')}
           className="text-sm text-gray-400 hover:text-gray-600 mb-4 block"
