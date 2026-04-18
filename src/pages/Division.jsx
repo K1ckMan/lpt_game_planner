@@ -213,29 +213,24 @@ export default function Division() {
                 const home = teams.find((t) => t.id === m.home_team_id)
                 const away = teams.find((t) => t.id === m.away_team_id)
                 const dateStr = m.date ? m.date.split('-').reverse().join('.') : ''
+                const homePlayers = [home?.player1_id, home?.player2_id].filter(Boolean).map(playerName).join(' · ')
+                const awayPlayers = [away?.player1_id, away?.player2_id].filter(Boolean).map(playerName).join(' · ')
                 return (
-                  <div key={m.id} className="px-5 py-3 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="text-right">
-                        <p className="text-xs font-medium text-gray-700">{home?.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {[home?.player1_id, home?.player2_id].filter(Boolean).map(playerName).join(' · ')}
-                        </p>
-                      </div>
-                      <span className="text-xs text-gray-300 shrink-0">vs</span>
-                      <div>
-                        <p className="text-xs font-medium text-gray-700">{away?.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {[away?.player1_id, away?.player2_id].filter(Boolean).map(playerName).join(' · ')}
-                        </p>
+                  <div key={m.id} className="px-5 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {home?.name} <span className="text-gray-300 font-normal">vs</span> {away?.name}
+                      </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[m.status] || ''}`}>
+                          {STATUS_LABEL[m.status] || m.status}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <p className="text-xs text-gray-400">{dateStr} · {m.time}</p>
-                      <span className={`text-xs px-2 py-1 rounded ${STATUS_CLASS[m.status] || ''}`}>
-                        {STATUS_LABEL[m.status] || m.status}
-                      </span>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {homePlayers} <span className="text-gray-200 mx-1">|</span> {awayPlayers}
+                    </p>
                   </div>
                 )
               })}
