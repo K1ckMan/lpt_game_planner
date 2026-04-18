@@ -225,17 +225,17 @@ export default function Division() {
                         <p className="text-xs text-gray-800">{playerName(home?.player2_id)}</p>
                       </div>
                       <span className="text-xs text-gray-300 pt-0.5 shrink-0">vs</span>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-xs text-gray-800">{playerName(away?.player1_id)}</p>
-                        <p className="text-xs text-gray-800">{playerName(away?.player2_id)}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-800">{playerName(away?.player2_id)}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${STATUS_CLASS[m.status] || ''}`}>
+                            {STATUS_LABEL[m.status] || m.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[m.status] || ''}`}>
-                        {STATUS_LABEL[m.status] || m.status}
-                      </span>
-                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{dateStr} · {m.time}</p>
                   </div>
                 )
               })}
