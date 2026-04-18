@@ -29,7 +29,7 @@ export default function Login() {
         .single()
       navigate(data?.profile_complete ? '/leagues' : '/profile-setup')
     } catch (e) {
-      setError(e.code === 'auth/popup-closed-by-user' ? '' : 'Ошибка входа. Попробуйте ещё раз.')
+      setError(e.code === 'auth/popup-closed-by-user' ? '' : 'Login failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -40,7 +40,7 @@ export default function Login() {
       <div className="bg-white border border-gray-200 rounded-lg p-8 w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">LPT Padel</h1>
-          <p className="text-gray-500 text-sm mt-1">Планировщик лиги</p>
+          <p className="text-gray-500 text-sm mt-1">League Planner</p>
         </div>
 
         {error && (
@@ -54,7 +54,7 @@ export default function Login() {
             className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-200 rounded hover:bg-gray-50 text-sm font-medium text-gray-700 disabled:opacity-50"
           >
             <GoogleIcon />
-            Войти с Google
+            Sign in with Google
           </button>
 
           <button
@@ -63,7 +63,7 @@ export default function Login() {
             className="w-full flex items-center justify-center gap-3 px-4 py-2.5 bg-blue-600 rounded hover:bg-blue-700 text-sm font-medium text-white disabled:opacity-50"
           >
             <FacebookIcon />
-            Войти с Facebook
+            Sign in with Facebook
           </button>
         </div>
       </div>

@@ -20,7 +20,7 @@ export default function ProfileSetup() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim() || !form.surname.trim() || !form.phone.trim()) {
-      setError('Заполните все поля')
+      setError('Please fill in all fields')
       return
     }
     setLoading(true)
@@ -36,7 +36,7 @@ export default function ProfileSetup() {
       await refreshProfile()
       navigate('/leagues')
     } catch {
-      setError('Ошибка сохранения. Попробуйте ещё раз.')
+      setError('Failed to save profile. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -45,8 +45,8 @@ export default function ProfileSetup() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white border border-gray-200 rounded-lg p-8 w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-gray-900 mb-1">Настройка профиля</h1>
-        <p className="text-sm text-gray-500 mb-6">Заполните данные для продолжения</p>
+        <h1 className="text-xl font-semibold text-gray-900 mb-1">Profile Setup</h1>
+        <p className="text-sm text-gray-500 mb-6">Fill in your details to continue</p>
 
         {error && (
           <p className="mb-4 text-sm text-red-600 bg-red-50 px-3 py-2 rounded">{error}</p>
@@ -54,9 +54,9 @@ export default function ProfileSetup() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {[
-            { label: 'Имя', field: 'name', placeholder: 'Иван' },
-            { label: 'Фамилия', field: 'surname', placeholder: 'Иванов' },
-            { label: 'Номер телефона', field: 'phone', placeholder: '+371 20 000 000', type: 'tel' },
+            { label: 'First Name', field: 'name', placeholder: 'John' },
+            { label: 'Last Name', field: 'surname', placeholder: 'Smith' },
+            { label: 'Phone Number', field: 'phone', placeholder: '+371 20 000 000', type: 'tel' },
           ].map(({ label, field, placeholder, type = 'text' }) => (
             <div key={field}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -74,7 +74,7 @@ export default function ProfileSetup() {
             disabled={loading}
             className="w-full py-2.5 bg-emerald-600 text-white rounded text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
           >
-            {loading ? 'Сохранение...' : 'Продолжить'}
+            {loading ? 'Saving...' : 'Continue'}
           </button>
         </form>
       </div>

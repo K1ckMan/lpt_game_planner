@@ -30,7 +30,7 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
 
   async function handleBook() {
     if (!awayTeamId || !date || !time) {
-      setError('Заполните все поля')
+      setError('Please fill in all fields')
       return
     }
     setLoading(true)
@@ -63,23 +63,25 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
       if (matchErr) throw matchErr
 
       const dateFormatted = date.split('-').reverse().join('.')
-      const message = `Новая игра: ${bookingTeam.name} vs ${awayTeam.name} — ${dateFormatted} в ${time}. Подтвердите участие.`
+      const message = `New game: ${bookingTeam.name} vs ${awayTeam.name} — ${dateFormatted} at ${time}. Please confirm your participation.`
 
       const otherPlayers = requiredPlayers.filter((uid) => uid !== user.uid)
-      await supabase.from('notifications').insert(
-        otherPlayers.map((uid) => ({
-          user_id: uid,
-          match_id: match.id,
-          division_id: divisionId,
-          message,
-          read: false,
-        }))
-      )
+      if (otherPlayers.length > 0) {
+        await supabase.from('notifications').insert(
+          otherPlayers.map((uid) => ({
+            user_id: uid,
+            match_id: match.id,
+            division_id: divisionId,
+            message,
+            read: false,
+          }))
+        )
+      }
 
       onBooked?.()
       onClose()
-    } catch (e) {
-      setError('Ошибка при бронировании. Попробуйте ещё раз.')
+    } catch {
+      setError('Booking failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -89,7 +91,7 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg w-full max-w-md">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">Забронировать игру</h2>
+          <h2 className="font-semibold text-gray-800">Book Game</h2>
           <p className="text-sm text-gray-500">{bookingTeam?.name}</p>
         </div>
 
@@ -99,13 +101,13 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Соперник</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Opponent</label>
             <select
               value={awayTeamId}
               onChange={(e) => setAwayTeamId(e.target.value)}
               className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
-              <option value="">Выберите команду</option>
+              <option value="">Select opponent team</option>
               {awayTeams.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
@@ -113,12 +115,12 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
               ))}
             </select>
             {awayTeams.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1">Нет других полных команд для игры</p>
+              <p className="text-xs text-amber-600 mt-1">No other complete teams to play against</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
             <input
               type="date"
               value={date}
@@ -131,11 +133,11 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
           {date && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Свободное время{' '}
+                Available time{' '}
                 <span className="text-gray-400 font-normal text-xs">(Playtomic)</span>
               </label>
               {slots.length === 0 ? (
-                <p className="text-sm text-gray-400">Нет доступного времени</p>
+                <p className="text-sm text-gray-400">No available slots</p>
               ) : (
                 <div className="grid grid-cols-5 gap-1.5">
                   {slots.map((s) => (
@@ -162,14 +164,14 @@ export default function BookGameModal({ divisionId, teams, bookingTeamId, onClos
             onClick={onClose}
             className="flex-1 py-2 border border-gray-200 text-gray-600 rounded text-sm hover:bg-gray-50"
           >
-            Отмена
+            Cancel
           </button>
           <button
             onClick={handleBook}
             disabled={loading || !awayTeamId || !date || !time}
             className="flex-1 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {loading ? 'Бронирование...' : 'Забронировать'}
+            {loading ? 'Booking...' : 'Book Game'}
           </button>
         </div>
       </div>

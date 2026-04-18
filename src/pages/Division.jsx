@@ -6,15 +6,15 @@ import Navbar from '../components/Navbar'
 import BookGameModal from '../components/BookGameModal'
 
 const LEAGUE_LABELS = {
-  gold: 'Золотая',
-  silver: 'Серебряная',
-  bronze: 'Бронзовая',
+  gold: 'Gold',
+  silver: 'Silver',
+  bronze: 'Bronze',
 }
 
 const STATUS_LABEL = {
-  pending: 'Ожидает подтверждения',
-  confirmed: 'Подтверждено',
-  cancelled: 'Отменено',
+  pending: 'Pending confirmation',
+  confirmed: 'Confirmed',
+  cancelled: 'Cancelled',
 }
 
 const STATUS_CLASS = {
@@ -100,7 +100,7 @@ export default function Division() {
       (t) => t.player1_id === user.uid || t.player2_id === user.uid
     )
     if (alreadyIn) {
-      alert('Вы уже состоите в команде этого дивизиона')
+      alert('You are already in a team in this division')
       return
     }
 
@@ -111,7 +111,7 @@ export default function Division() {
       .eq('id', teamId)
       .is(`${slot}_id`, null)
 
-    if (error) alert('Это место уже занято')
+    if (error) alert('This slot is already taken')
     setJoining(null)
   }
 
@@ -141,33 +141,32 @@ export default function Division() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-sm text-gray-400 mb-6">
-          <button onClick={() => navigate('/leagues')} className="hover:text-gray-600">Лиги</button>
+          <button onClick={() => navigate('/leagues')} className="hover:text-gray-600">Leagues</button>
           <span>/</span>
           <button onClick={() => navigate(`/leagues/${league}`)} className="hover:text-gray-600">
             {LEAGUE_LABELS[league]}
           </button>
           <span>/</span>
-          <span className="text-gray-700">Дивизион {divNum}</span>
+          <span className="text-gray-700">Division {divNum}</span>
         </div>
 
         <h1 className="text-xl font-semibold text-gray-900 mb-6">
-          {LEAGUE_LABELS[league]} лига — Дивизион {divNum}
+          {LEAGUE_LABELS[league]} League — Division {divNum}
         </h1>
 
         {/* Teams table */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
           <div className="px-5 py-3 border-b border-gray-100">
-            <h2 className="font-medium text-gray-800">Команды</h2>
+            <h2 className="font-medium text-gray-800">Teams</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-400 uppercase border-b border-gray-100">
-                  <th className="px-5 py-2.5">Команда</th>
-                  <th className="px-5 py-2.5">Игрок 1</th>
-                  <th className="px-5 py-2.5">Игрок 2</th>
+                  <th className="px-5 py-2.5">Team</th>
+                  <th className="px-5 py-2.5">Player 1</th>
+                  <th className="px-5 py-2.5">Player 2</th>
                   <th className="px-5 py-2.5"></th>
                 </tr>
               </thead>
@@ -181,7 +180,7 @@ export default function Division() {
                         {team.player1_id ? (
                           <span className={team.player1_id === user?.uid ? 'text-emerald-600 font-medium' : 'text-gray-700'}>
                             {playerName(team.player1_id)}
-                            {team.player1_id === user?.uid && ' (вы)'}
+                            {team.player1_id === user?.uid && ' (you)'}
                           </span>
                         ) : (
                           <button
@@ -189,7 +188,7 @@ export default function Division() {
                             disabled={!!joining || !!myTeamId}
                             className="text-xs px-2.5 py-1 border border-dashed border-gray-300 text-gray-400 rounded hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed"
                           >
-                            + Занять место
+                            + Join
                           </button>
                         )}
                       </td>
@@ -197,7 +196,7 @@ export default function Division() {
                         {team.player2_id ? (
                           <span className={team.player2_id === user?.uid ? 'text-emerald-600 font-medium' : 'text-gray-700'}>
                             {playerName(team.player2_id)}
-                            {team.player2_id === user?.uid && ' (вы)'}
+                            {team.player2_id === user?.uid && ' (you)'}
                           </span>
                         ) : (
                           <button
@@ -205,7 +204,7 @@ export default function Division() {
                             disabled={!!joining || !!myTeamId}
                             className="text-xs px-2.5 py-1 border border-dashed border-gray-300 text-gray-400 rounded hover:border-emerald-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed"
                           >
-                            + Занять место
+                            + Join
                           </button>
                         )}
                       </td>
@@ -215,10 +214,10 @@ export default function Division() {
                             onClick={() => setBookingTeamId(team.id)}
                             className="text-xs px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700"
                           >
-                            Забронировать игру
+                            Book Game
                           </button>
                         ) : (
-                          <span className="text-xs text-gray-300">Неполная команда</span>
+                          <span className="text-xs text-gray-300">Incomplete team</span>
                         )}
                       </td>
                     </tr>
@@ -233,7 +232,7 @@ export default function Division() {
         {matches.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100">
-              <h2 className="font-medium text-gray-800">Запланированные игры</h2>
+              <h2 className="font-medium text-gray-800">Scheduled Games</h2>
             </div>
             <div className="divide-y divide-gray-50">
               {matches.map((m) => {

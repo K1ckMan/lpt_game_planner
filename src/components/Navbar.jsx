@@ -27,7 +27,7 @@ export default function Navbar() {
               onClick={handleLogout}
               className="text-sm text-gray-400 hover:text-gray-700"
             >
-              Выйти
+              Sign out
             </button>
           </div>
         )}

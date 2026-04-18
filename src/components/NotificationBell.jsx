@@ -93,10 +93,10 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
           <div className="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-700">
-            Уведомления
+            Notifications
           </div>
           {notifications.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-400 text-center">Нет новых уведомлений</p>
+            <p className="px-4 py-6 text-sm text-gray-400 text-center">No new notifications</p>
           ) : (
             <ul>
               {notifications.map((n) => (
@@ -107,13 +107,13 @@ export default function NotificationBell() {
                       onClick={() => handleConfirm(n)}
                       className="flex-1 text-xs py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700"
                     >
-                      Подтвердить
+                      Confirm
                     </button>
                     <button
                       onClick={() => handleDecline(n)}
                       className="flex-1 text-xs py-1.5 border border-gray-200 text-gray-600 rounded hover:bg-gray-50"
                     >
-                      Отклонить
+                      Decline
                     </button>
                   </div>
                 </li>
