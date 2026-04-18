@@ -90,8 +90,7 @@ export default function BookGameModal({ divisionId, myTeam, opponents, profiles 
       <div className="bg-white rounded-lg w-full max-w-md overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-800">Book Game</h2>
-          <p className="text-xs text-gray-400">{pName(myTeam.player1_id)}</p>
-          <p className="text-xs text-gray-400">{pName(myTeam.player2_id)}</p>
+          <p className="text-xs text-gray-400">{pName(myTeam.player1_id)} / {pName(myTeam.player2_id)}</p>
         </div>
 
         <div className="px-5 py-4 space-y-4">
@@ -120,24 +119,20 @@ export default function BookGameModal({ divisionId, myTeam, opponents, profiles 
           )}
 
           {opponents.length === 1 && (
-            <div className="text-sm text-gray-500">
-              <p className="text-xs mb-0.5">vs</p>
-              <p className="font-medium text-gray-800">{pName(opponents[0].player1_id)}</p>
-              <p className="font-medium text-gray-800">{pName(opponents[0].player2_id)}</p>
-            </div>
+            <p className="text-sm text-gray-600">
+              vs <span className="font-medium text-gray-800">{pName(opponents[0].player1_id)} / {pName(opponents[0].player2_id)}</span>
+            </p>
           )}
 
-          <div className="overflow-hidden">
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-            <div className="overflow-hidden rounded border border-gray-200 focus-within:ring-1 focus-within:ring-emerald-500">
-              <input
-                type="date"
-                value={date}
-                min={today}
-                onChange={(e) => { setDate(e.target.value); setTime('') }}
-                className="w-full min-w-0 block appearance-none px-3 py-2 text-sm focus:outline-none bg-white"
-              />
-            </div>
+            <input
+              type="date"
+              value={date}
+              min={today}
+              onChange={(e) => { setDate(e.target.value); setTime('') }}
+              className="block w-full min-w-0 border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+            />
           </div>
 
           {date && (
