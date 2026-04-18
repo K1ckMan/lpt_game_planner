@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import BookGameModal from '../components/BookGameModal'
+import PostResultModal from '../components/PostResultModal'
 
 const LEAGUE_LABELS = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' }
 
@@ -27,6 +28,7 @@ export default function Division() {
   const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
   const [bookingOpponent, setBookingOpponent] = useState(null)
+  const [postingMatch, setPostingMatch] = useState(null)
   const [joining, setJoining] = useState(null)
 
   useEffect(() => {
@@ -235,7 +237,17 @@ export default function Division() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{dateStr} · {m.time}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-gray-400">{dateStr} · {m.time}</span>
+                      {m.status === 'confirmed' && (
+                        <button
+                          onClick={() => setPostingMatch(m)}
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                        >
+                          Post Result →
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -243,6 +255,16 @@ export default function Division() {
           </div>
         )}
       </div>
+
+      {postingMatch && (
+        <PostResultModal
+          match={postingMatch}
+          homeTeam={teams.find((t) => t.id === postingMatch.home_team_id)}
+          awayTeam={teams.find((t) => t.id === postingMatch.away_team_id)}
+          profiles={profiles}
+          onClose={() => setPostingMatch(null)}
+        />
+      )}
 
       {bookingOpponent && myTeam && (
         <BookGameModal
