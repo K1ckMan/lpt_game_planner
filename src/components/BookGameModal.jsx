@@ -124,13 +124,16 @@ export default function BookGameModal({ divisionId, myTeam, opponents, profiles 
 
           <div>
             <p className="text-xs text-gray-400 mb-1.5">Date</p>
-            <input
-              type="date"
-              value={date}
-              min={today}
-              onChange={(e) => { setDate(e.target.value); setTime('') }}
-              className="block w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
-            />
+            <div className="overflow-hidden rounded-lg border border-gray-200 focus-within:ring-1 focus-within:ring-emerald-500">
+              <input
+                type="date"
+                value={date}
+                min={today}
+                onChange={(e) => { setDate(e.target.value); setTime('') }}
+                style={{ width: '100%', boxSizing: 'border-box' }}
+                className="block px-3 py-2.5 text-sm focus:outline-none bg-white"
+              />
+            </div>
           </div>
 
           {date && (
