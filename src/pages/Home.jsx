@@ -66,7 +66,9 @@ function ShareModal({ booking, onClose }) {
 
         <div className="px-5 py-3 bg-gray-50 border-y border-gray-100">
           <p className="text-xs text-gray-500 mb-1">Game link</p>
-          <p className="text-sm text-emerald-700 font-medium break-all">{booking.playtomic_link}</p>
+          <a href={booking.playtomic_link} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-700 font-medium break-all underline underline-offset-2">
+            {booking.playtomic_link}
+          </a>
         </div>
 
         <div className="px-5 py-4 flex gap-2">
