@@ -222,7 +222,7 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {selected.courts?.length > 1 && (
+                    {selected.courts?.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {selected.courts.map((c, i) => (
                           <button
