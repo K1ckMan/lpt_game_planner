@@ -56,8 +56,8 @@ function ShareModal({ booking, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden shadow-lg mb-2">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden shadow-lg">
         <div className="px-5 pt-5 pb-3">
           <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Game confirmed</p>
           <p className="text-base font-semibold text-gray-900">{dateStr} · {booking.time} – {endTime}</p>
