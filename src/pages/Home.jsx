@@ -11,23 +11,6 @@ const STATUS_CLASS = {
   cancelled: 'text-red-600 bg-red-50',
 }
 
-function getUpcomingSlots(weeks = 5) {
-  const slots = []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  for (let w = 0; w < weeks; w++) {
-    const d = new Date(today)
-    const daysUntilTuesday = (2 - d.getDay() + 7) % 7 || 7
-    d.setDate(d.getDate() + daysUntilTuesday + w * 7)
-    const dateStr = d.toISOString().split('T')[0]
-    const seed = parseInt(dateStr.replace(/-/g, ''))
-    const allTimes = ['17:00', '18:00', '19:00', '20:00', '21:00']
-    const times = allTimes.filter((_, i) => (seed + i * 3) % 5 !== 0)
-    slots.push({ date: dateStr, times })
-  }
-  return slots
-}
-
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
@@ -91,13 +74,30 @@ export default function Home() {
   const { user } = useAuth()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [slots, setSlots] = useState([])
+  const [slotsLoading, setSlotsLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [shareBooking, setShareBooking] = useState(null)
-  const upcomingSlots = getUpcomingSlots(5)
 
-  useEffect(() => { loadBookings() }, [])
+  useEffect(() => {
+    loadBookings()
+    loadSlots()
+  }, [])
+
+  async function loadSlots() {
+    setSlotsLoading(true)
+    try {
+      const resp = await fetch('/api/playtomic-slots')
+      const json = await resp.json()
+      setSlots(json.slots || [])
+    } catch {
+      setSlots([])
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
 
   async function loadBookings() {
     const { data } = await supabase
@@ -148,55 +148,82 @@ export default function Home() {
 
         <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Available</h2>
 
-        <div className="space-y-3 mb-8">
-          {upcomingSlots.map(({ date, times }) => (
-            <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-800">{formatDate(date)}</p>
-              </div>
-              <div className="px-4 py-3 flex flex-wrap gap-2">
-                {times.map((time) => {
-                  const booked = isBooked(date, time)
-                  const isActive = selected?.date === date && selected?.time === time
-                  return (
-                    <button
-                      key={time}
-                      onClick={() => !booked && setSelected(isActive ? null : { date, time })}
-                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                        booked
-                          ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
-                          : isActive
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'border-gray-200 text-gray-700 hover:border-emerald-400'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {selected?.date === date && (
-                <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-emerald-800">
-                      {selected.time} – {addMinutes(selected.time, 90)}
-                    </p>
-                    <p className="text-xs text-emerald-600">1.5h</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button onClick={() => setSelected(null)} className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100">
-                      Cancel
-                    </button>
-                    <button onClick={confirmBook} disabled={submitting} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-                      {submitting ? '...' : 'Book'}
-                    </button>
-                  </div>
+        {slotsLoading ? (
+          <div className="bg-white border border-gray-200 rounded-xl px-4 py-6 text-center text-sm text-gray-400 mb-8">
+            Checking Playtomic...
+          </div>
+        ) : slots.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-xl px-4 py-6 text-center text-sm text-gray-400 mb-8">
+            No available slots found
+          </div>
+        ) : (
+          <div className="space-y-3 mb-8">
+            {slots.map(({ date, times }) => (
+              <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-800">{formatDate(date)}</p>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+
+                {times.length === 0 ? (
+                  <p className="px-4 py-3 text-xs text-gray-400">No slots this day</p>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {times.map(({ time, courts }) => {
+                      const booked = isBooked(date, time)
+                      const isActive = selected?.date === date && selected?.time === time
+                      return (
+                        <div key={time} className="px-4 py-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap gap-1.5">
+                                {courts.map((c, i) => (
+                                  <span key={i} className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">
+                                    {c.club_name} · {c.court_name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => !booked && setSelected(isActive ? null : { date, time, courts })}
+                              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                                booked
+                                  ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
+                                  : isActive
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'border-gray-200 text-gray-700 hover:border-emerald-400'
+                              }`}
+                            >
+                              {time}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {selected?.date === date && (
+                  <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-emerald-800">
+                        {selected.time} – {addMinutes(selected.time, 90)}
+                      </p>
+                      <p className="text-xs text-emerald-600">1.5h</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => setSelected(null)} className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100">
+                        Cancel
+                      </button>
+                      <button onClick={confirmBook} disabled={submitting} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                        {submitting ? '...' : 'Book'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {!loading && (() => {
           const today = new Date().toISOString().split('T')[0]
