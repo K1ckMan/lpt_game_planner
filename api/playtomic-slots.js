@@ -31,7 +31,10 @@ export default async function handler(req, res) {
     }
 
     const tenantJson = await tenantResp.json()
-    const tenants = Array.isArray(tenantJson) ? tenantJson : (tenantJson.tenants || [])
+    const allTenants = Array.isArray(tenantJson) ? tenantJson : (tenantJson.tenants || [])
+    const tenants = allTenants.filter((t) =>
+      (t.tenant_name || '').toLowerCase().includes('padel club riga')
+    )
 
     const dates = getUpcomingTuesdays(5)
     const result = []
