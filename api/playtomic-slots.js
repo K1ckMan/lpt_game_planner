@@ -1,4 +1,4 @@
-const COORDINATES = '57.0,24.13'
+const TENANT_ID = 'e5f2bf97-805f-4c5d-a696-6933a548abc2'
 const SPORT_ID = 'PADEL'
 const HEADERS = {
   'Origin': 'https://playtomic.io',
@@ -22,19 +22,18 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
 
   try {
+    // Load court names once
     const tenantResp = await fetch(
-      `https://api.playtomic.io/v1/tenants?coordinate=${COORDINATES}&radius=50000&sport_id=${SPORT_ID}&playtomic_status=ACTIVE&size=100`,
+      `https://api.playtomic.io/v1/tenants/${TENANT_ID}`,
       { headers: HEADERS }
     )
-    if (!tenantResp.ok) {
-      return res.status(500).json({ error: 'Failed to fetch tenants' })
-    }
-
     const tenantJson = await tenantResp.json()
-    const allTenants = Array.isArray(tenantJson) ? tenantJson : (tenantJson.tenants || [])
-    const tenants = allTenants.filter((t) =>
-      (t.tenant_name || '').toLowerCase().includes('padel club riga')
-    )
+    const courtNames = {}
+    for (const r of tenantJson.resources || []) {
+      // Extract short name: "#1", "#2", "Outdoor 1" etc.
+      const match = r.name.match(/#\d+/) || r.name.match(/Outdoor \d+/)
+      courtNames[r.resource_id] = match ? match[0] : r.name
+    }
 
     const dates = getUpcomingTuesdays(5)
     const result = []
@@ -43,38 +42,40 @@ export default async function handler(req, res) {
       const localStartMin = `${date}T17:00:00`
       const localStartMax = `${date}T22:00:00`
 
-      const slotsByTime = {}
-
-      await Promise.all(
-        tenants.map(async (t) => {
-          const tid = t.tenant_id
-          const name = t.tenant_name || 'Unknown'
-          if (!tid) return
-
-          try {
-            const availResp = await fetch(
-              `https://api.playtomic.io/v1/availability?user_id=me&tenant_id=${tid}&sport_id=${SPORT_ID}&local_start_min=${localStartMin}&local_start_max=${localStartMax}&duration=90`,
-              { headers: HEADERS }
-            )
-            if (!availResp.ok) return
-
-            const slots = await availResp.json()
-            if (!Array.isArray(slots)) return
-
-            for (const slot of slots) {
-              const time = slot.start_time?.substring(0, 5)
-              if (!time) continue
-              if (!slotsByTime[time]) slotsByTime[time] = []
-              slotsByTime[time].push({
-                club_id: tid,
-                club_name: name,
-                court_id: slot.resource_id,
-                court_name: slot.resource_name || 'Court',
-              })
-            }
-          } catch {}
-        })
+      const availResp = await fetch(
+        `https://api.playtomic.io/v1/availability?user_id=me&tenant_id=${TENANT_ID}&sport_id=${SPORT_ID}&local_start_min=${localStartMin}&local_start_max=${localStartMax}&duration=90`,
+        { headers: HEADERS }
       )
+      if (!availResp.ok) {
+        result.push({ date, times: [] })
+        continue
+      }
+
+      // Response: [{ resource_id, start_date, slots: [{ start_time, duration, price }] }]
+      const resources = await availResp.json()
+      if (!Array.isArray(resources)) {
+        result.push({ date, times: [] })
+        continue
+      }
+
+      const slotsByTime = {}
+      for (const resource of resources) {
+        const courtId = resource.resource_id
+        const courtName = courtNames[courtId] || courtId.substring(0, 6)
+
+        for (const slot of resource.slots || []) {
+          if (slot.duration !== 90) continue
+          const time = slot.start_time?.substring(0, 5)
+          if (!time || time < '17:00' || time >= '22:00') continue
+
+          if (!slotsByTime[time]) slotsByTime[time] = []
+          slotsByTime[time].push({
+            court_id: courtId,
+            court_name: courtName,
+            price: slot.price,
+          })
+        }
+      }
 
       const times = Object.entries(slotsByTime)
         .sort(([a], [b]) => a.localeCompare(b))
