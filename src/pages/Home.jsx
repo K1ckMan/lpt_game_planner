@@ -101,7 +101,6 @@ export default function Home() {
     const { data } = await supabase
       .from('simple_bookings')
       .select('*')
-      .eq('user_id', user.uid)
       .order('date', { ascending: false })
     setBookings(data || [])
     setLoading(false)
@@ -203,6 +202,7 @@ export default function Home() {
               {bookings.map((b) => {
                 const dateStr = b.date ? b.date.split('-').reverse().join('.') : ''
                 const endTime = addMinutes(b.time, 90)
+                const isOwn = b.user_id === user.uid
                 return (
                   <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
                     <div className="flex items-center justify-between gap-2">
@@ -211,7 +211,7 @@ export default function Home() {
                         <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[b.status] || ''}`}>
                           {STATUS_LABEL[b.status] || b.status}
                         </span>
-                        {b.status !== 'cancelled' && (
+                        {isOwn && b.status !== 'cancelled' && (
                           <button
                             onClick={() => cancelBooking(b.id)}
                             disabled={cancelling === b.id}
@@ -222,7 +222,7 @@ export default function Home() {
                         )}
                       </div>
                     </div>
-                    {b.playtomic_link && b.status === 'confirmed' && (
+                    {isOwn && b.playtomic_link && b.status !== 'cancelled' && (
                       <button
                         onClick={() => setShareBooking(b)}
                         className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
