@@ -1,4 +1,7 @@
 {
-  "rewrites": [{ "source": "/((?!api).*)", "destination": "/" }]
+  "rewrites": [{ "source": "/((?!api).*)", "destination": "/" }],
+  "functions": {
+    "api/playtomic-slots.js": { "maxDuration": 10 }
+  }
 }
 

@@ -89,13 +89,16 @@ export default function Home() {
 
   async function loadSlots() {
     setSlotsLoading(true)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     try {
-      const resp = await fetch('/api/playtomic-slots')
+      const resp = await fetch('/api/playtomic-slots', { signal: controller.signal })
       const json = await resp.json()
       setSlots(json.slots || [])
     } catch {
       setSlots([])
     } finally {
+      clearTimeout(timeout)
       setSlotsLoading(false)
     }
   }
@@ -148,7 +151,7 @@ export default function Home() {
         supabase.from('simple_bookings').update({ status: 'cancelled' }).eq('id', b.id)
       )
     )
-    await Promise.all([loadBookings(), loadSlots()])
+    await loadBookings()
     setCancelling(null)
   }
 
