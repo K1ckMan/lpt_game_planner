@@ -161,21 +161,26 @@ export default function Home() {
     try { return new URL(link).searchParams.get('court') } catch { return null }
   }
 
-  // A slot is booked only if ALL its courts are overlapped by existing bookings
-  function isBooked(date, time, slotCourts) {
-    if (!slotCourts?.length) return false
+  function isCourtBooked(date, time, courtId) {
     const slotStart = toMinutes(time)
     const slotEnd = slotStart + 90
-    return slotCourts.every((sc) =>
-      bookings.some((b) => {
-        if (b.date !== date || b.status === 'cancelled') return false
-        const bookedCourtId = courtIdFromLink(b.playtomic_link)
-        if (bookedCourtId && bookedCourtId !== sc.court_id) return false
-        const bStart = toMinutes(b.time)
-        const bEnd = bStart + 90
-        return slotStart < bEnd && slotEnd > bStart
-      })
-    )
+    return bookings.some((b) => {
+      if (b.date !== date || b.status === 'cancelled') return false
+      const bookedCourtId = courtIdFromLink(b.playtomic_link)
+      if (bookedCourtId && bookedCourtId !== courtId) return false
+      const bStart = toMinutes(b.time)
+      const bEnd = bStart + 90
+      return slotStart < bEnd && slotEnd > bStart
+    })
+  }
+
+  function getAvailableCourts(date, time, courts) {
+    return courts.filter((c) => !isCourtBooked(date, time, c.court_id))
+  }
+
+  function isBooked(date, time, slotCourts) {
+    if (!slotCourts?.length) return false
+    return getAvailableCourts(date, time, slotCourts).length === 0
   }
 
   return (
@@ -214,7 +219,7 @@ export default function Home() {
                           onClick={() => {
                             if (booked) return
                             if (isActive) { setSelected(null); setSelectedCourt(null) }
-                            else { setSelected({ date, time, courts }); setSelectedCourt(courts.length === 1 ? courts[0] : null) }
+                            else { const avail = getAvailableCourts(date, time, courts); setSelected({ date, time, courts: avail }); setSelectedCourt(avail.length === 1 ? avail[0] : null) }
                           }}
                           className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                             booked
