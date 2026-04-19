@@ -5,6 +5,21 @@ const HEADERS = {
   'User-Agent': 'Mozilla/5.0',
 }
 
+// Riga is UTC+3 in summer (EEST, late Mar–late Oct), UTC+2 in winter (EET)
+function rigaOffsetHours(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z')
+  const month = d.getUTCMonth() + 1
+  return (month >= 4 && month <= 10) ? 3 : 2
+}
+
+function utcToRiga(utcTime, offsetH) {
+  const [h, m] = utcTime.split(':').map(Number)
+  const total = h * 60 + m + offsetH * 60
+  const hh = Math.floor(total / 60) % 24
+  const mm = total % 60
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
 function getUpcomingTuesdays() {
   const dates = []
   const today = new Date()
@@ -42,6 +57,8 @@ export default async function handler(req, res) {
     const result = []
 
     for (const date of dates) {
+      const offsetH = rigaOffsetHours(date)
+      // local_start_min/max = Riga local time; response start_time = UTC
       const localStartMin = `${date}T17:00:00`
       const localStartMax = `${date}T22:00:00`
 
@@ -71,16 +88,17 @@ export default async function handler(req, res) {
         const byTime = {}
         for (const slot of resource.slots || []) {
           const time = slot.start_time?.substring(0, 5)
-          if (!time || time < '17:00' || time >= '22:00') continue
+          if (!time) continue
           if (!byTime[time]) byTime[time] = []
           byTime[time].push(slot)
         }
 
-        for (const [time, timeSlots] of Object.entries(byTime)) {
+        for (const [utcTime, timeSlots] of Object.entries(byTime)) {
+          const rigaTime = utcToRiga(utcTime, offsetH)
           const slot90 = timeSlots.find(s => s.duration === 90)
           const best = slot90 || timeSlots.sort((a, b) => Math.abs(a.duration - 90) - Math.abs(b.duration - 90))[0]
-          if (!slotsByTime[time]) slotsByTime[time] = []
-          slotsByTime[time].push({
+          if (!slotsByTime[rigaTime]) slotsByTime[rigaTime] = []
+          slotsByTime[rigaTime].push({
             court_id: courtId,
             court_name: courtName,
             duration: best.duration,
