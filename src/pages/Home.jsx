@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
@@ -33,23 +33,93 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
 }
 
-function addHalfHours(time, count) {
+function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
-  const total = h * 60 + m + count * 30
+  const total = h * 60 + m + mins
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+function ShareModal({ booking, onClose }) {
+  const [copied, setCopied] = useState(false)
+  const dateStr = booking.date ? booking.date.split('-').reverse().join('.') : ''
+  const endTime = addMinutes(booking.time, 90)
+
+  async function handleShare() {
+    const text = `🎾 Padel game\n${dateStr} · ${booking.time} – ${endTime}\n${booking.playtomic_link}`
+    if (navigator.share) {
+      try { await navigator.share({ text }) } catch {}
+    } else {
+      await navigator.clipboard.writeText(booking.playtomic_link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-end justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden shadow-lg mb-2">
+        <div className="px-5 pt-5 pb-3">
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Game confirmed</p>
+          <p className="text-base font-semibold text-gray-900">{dateStr} · {booking.time} – {endTime}</p>
+          <p className="text-xs text-gray-400 mt-0.5">1.5h · Playtomic</p>
+        </div>
+
+        <div className="px-5 py-3 bg-gray-50 border-y border-gray-100">
+          <p className="text-xs text-gray-500 mb-1">Game link</p>
+          <p className="text-sm text-emerald-700 font-medium break-all">{booking.playtomic_link}</p>
+        </div>
+
+        <div className="px-5 py-4 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
+            Close
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
+          >
+            {copied ? 'Copied!' : 'Share'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Home() {
   const { user } = useAuth()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState(null)   // { date, time }
+  const [selected, setSelected] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [cancelling, setCancelling] = useState(null)
+  const [shareBooking, setShareBooking] = useState(null)
+  const seenLinks = useRef(new Set())
 
   const upcomingSlots = getUpcomingSlots(5)
 
-  useEffect(() => { loadBookings() }, [])
+  useEffect(() => {
+    loadBookings()
+
+    // Realtime: watch for confirmed booking with playtomic_link
+    const ch = supabase
+      .channel('my-bookings')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'simple_bookings',
+        filter: `user_id=eq.${user.uid}`,
+      }, (payload) => {
+        const b = payload.new
+        if (b.playtomic_link && b.status === 'confirmed' && !seenLinks.current.has(b.id)) {
+          seenLinks.current.add(b.id)
+          setShareBooking(b)
+        }
+        setBookings((prev) => prev.map((x) => x.id === b.id ? b : x))
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(ch)
+  }, [])
 
   async function loadBookings() {
     const { data } = await supabase
@@ -64,13 +134,13 @@ export default function Home() {
   async function confirmBook() {
     if (!selected) return
     setSubmitting(true)
-    const { error } = await supabase.from('simple_bookings').insert({
+    await supabase.from('simple_bookings').insert({
       user_id: user.uid,
       date: selected.date,
       time: selected.time,
       status: 'pending',
     })
-    if (!error) await loadBookings()
+    await loadBookings()
     setSelected(null)
     setSubmitting(false)
   }
@@ -94,67 +164,53 @@ export default function Home() {
         <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Available</h2>
 
         <div className="space-y-3 mb-8">
-          {upcomingSlots.map(({ date, times }) => {
-            const isSelectedDate = selected?.date === date
-            return (
-              <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-800">{formatDate(date)}</p>
-                </div>
-
-                <div className="px-4 py-3 flex flex-wrap gap-2">
-                  {times.map((time) => {
-                    const booked = isBooked(date, time)
-                    const isActive = selected?.date === date && selected?.time === time
-                    return (
-                      <button
-                        key={time}
-                        onClick={() => {
-                          if (booked) return
-                          setSelected(isActive ? null : { date, time })
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                          booked
-                            ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
-                            : isActive
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'border-gray-200 text-gray-700 hover:border-emerald-400'
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                {isSelectedDate && (
-                  <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-emerald-800">
-                        {selected.time} – {addHalfHours(selected.time, 3)}
-                      </p>
-                      <p className="text-xs text-emerald-600">1.5h · Pending confirmation</p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => setSelected(null)}
-                        className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={confirmBook}
-                        disabled={submitting}
-                        className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-                      >
-                        {submitting ? '...' : 'Book'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+          {upcomingSlots.map(({ date, times }) => (
+            <div key={date} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-800">{formatDate(date)}</p>
               </div>
-            )
-          })}
+              <div className="px-4 py-3 flex flex-wrap gap-2">
+                {times.map((time) => {
+                  const booked = isBooked(date, time)
+                  const isActive = selected?.date === date && selected?.time === time
+                  return (
+                    <button
+                      key={time}
+                      onClick={() => !booked && setSelected(isActive ? null : { date, time })}
+                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        booked
+                          ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
+                          : isActive
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'border-gray-200 text-gray-700 hover:border-emerald-400'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {selected?.date === date && (
+                <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-emerald-800">
+                      {selected.time} – {addMinutes(selected.time, 90)}
+                    </p>
+                    <p className="text-xs text-emerald-600">1.5h</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => setSelected(null)} className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100">
+                      Cancel
+                    </button>
+                    <button onClick={confirmBook} disabled={submitting} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                      {submitting ? '...' : 'Book'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
         {!loading && bookings.length > 0 && (
@@ -163,26 +219,34 @@ export default function Home() {
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               {bookings.map((b) => {
                 const dateStr = b.date ? b.date.split('-').reverse().join('.') : ''
-                const canCancel = b.status !== 'cancelled'
+                const endTime = addMinutes(b.time, 90)
                 return (
-                  <div key={b.id} className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-50 last:border-0">
-                    <div>
-                      <p className="text-sm text-gray-800">{dateStr} · {b.time} – {addHalfHours(b.time, 3)}</p>
+                  <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-gray-800">{dateStr} · {b.time} – {endTime}</p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[b.status] || ''}`}>
+                          {STATUS_LABEL[b.status] || b.status}
+                        </span>
+                        {b.status !== 'cancelled' && (
+                          <button
+                            onClick={() => cancelBooking(b.id)}
+                            disabled={cancelling === b.id}
+                            className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                          >
+                            {cancelling === b.id ? '...' : 'Cancel'}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[b.status] || ''}`}>
-                        {STATUS_LABEL[b.status] || b.status}
-                      </span>
-                      {canCancel && (
-                        <button
-                          onClick={() => cancelBooking(b.id)}
-                          disabled={cancelling === b.id}
-                          className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                        >
-                          {cancelling === b.id ? '...' : 'Cancel'}
-                        </button>
-                      )}
-                    </div>
+                    {b.playtomic_link && b.status === 'confirmed' && (
+                      <button
+                        onClick={() => setShareBooking(b)}
+                        className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                      >
+                        Share game link →
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -192,6 +256,10 @@ export default function Home() {
 
       </div>
       <Footer />
+
+      {shareBooking && (
+        <ShareModal booking={shareBooking} onClose={() => setShareBooking(null)} />
+      )}
     </div>
   )
 }
