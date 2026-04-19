@@ -122,8 +122,6 @@ export default function Home() {
         time: selected.time,
         status: 'confirmed',
         playtomic_link: mockLink,
-        court_id: selectedCourt.court_id,
-        court_name: selectedCourt.court_name,
       })
       .select().single()
     await loadBookings()
