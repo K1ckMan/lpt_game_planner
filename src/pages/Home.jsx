@@ -135,13 +135,21 @@ export default function Home() {
   async function cancelBooking(id) {
     setCancelling(id)
     const booking = bookings.find((b) => b.id === id)
-    await supabase
-      .from('simple_bookings')
-      .update({ status: 'cancelled' })
-      .eq('user_id', user.uid)
-      .eq('date', booking.date)
-      .eq('time', booking.time)
-      .neq('status', 'cancelled')
+    const bStart = toMinutes(booking.time)
+    const bEnd = bStart + 90
+    // Cancel all user's bookings that overlap with this one
+    const overlapping = bookings.filter((b) =>
+      b.user_id === user.uid &&
+      b.date === booking.date &&
+      b.status !== 'cancelled' &&
+      toMinutes(b.time) < bEnd &&
+      toMinutes(b.time) + 90 > bStart
+    )
+    await Promise.all(
+      overlapping.map((b) =>
+        supabase.from('simple_bookings').update({ status: 'cancelled' }).eq('id', b.id)
+      )
+    )
     await Promise.all([loadBookings(), loadSlots()])
     setCancelling(null)
   }
