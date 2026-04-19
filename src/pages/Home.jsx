@@ -146,8 +146,20 @@ export default function Home() {
     setCancelling(null)
   }
 
+  function toMinutes(t) {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+  }
+
   function isBooked(date, time) {
-    return bookings.some((b) => b.date === date && b.time === time && b.status !== 'cancelled')
+    const slotStart = toMinutes(time)
+    const slotEnd = slotStart + 90
+    return bookings.some((b) => {
+      if (b.date !== date || b.status === 'cancelled') return false
+      const bStart = toMinutes(b.time)
+      const bEnd = bStart + 90
+      return slotStart < bEnd && slotEnd > bStart
+    })
   }
 
   return (
