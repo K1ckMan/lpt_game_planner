@@ -5,14 +5,17 @@ const HEADERS = {
   'User-Agent': 'Mozilla/5.0',
 }
 
-function getUpcomingTuesdays(count = 5) {
+function getUpcomingTuesdays() {
   const dates = []
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  for (let w = 0; w < count; w++) {
+  const maxDate = new Date(today)
+  maxDate.setDate(maxDate.getDate() + 14)
+  for (let w = 0; w < 5; w++) {
     const d = new Date(today)
     const daysUntil = (2 - d.getDay() + 7) % 7 || 7
     d.setDate(d.getDate() + daysUntil + w * 7)
+    if (d > maxDate) break
     dates.push(d.toISOString().split('T')[0])
   }
   return dates
