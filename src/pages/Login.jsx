@@ -15,7 +15,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (user && profile?.profile_complete) return <Navigate to="/leagues" replace />
+  if (user && profile?.profile_complete) return <Navigate to="/" replace />
   if (user && !profile?.profile_complete) return <Navigate to="/profile-setup" replace />
 
   async function handleSignIn(provider) {
@@ -28,7 +28,7 @@ export default function Login() {
         .select('profile_complete')
         .eq('id', result.user.uid)
         .single()
-      navigate(data?.profile_complete ? '/leagues' : '/profile-setup')
+      navigate(data?.profile_complete ? '/' : '/profile-setup')
     } catch (e) {
       setError(e.code === 'auth/popup-closed-by-user' ? '' : 'Login failed. Please try again.')
     } finally {

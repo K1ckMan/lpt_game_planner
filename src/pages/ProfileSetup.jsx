@@ -11,7 +11,7 @@ export default function ProfileSetup() {
   const [error, setError] = useState('')
 
   if (!user) return <Navigate to="/login" replace />
-  if (profile?.profile_complete) return <Navigate to="/leagues" replace />
+  if (profile?.profile_complete) return <Navigate to="/" replace />
 
   function set(field) {
     return (e) => setForm((p) => ({ ...p, [field]: e.target.value }))
@@ -34,7 +34,7 @@ export default function ProfileSetup() {
       })
       if (err) throw err
       await refreshProfile()
-      navigate('/leagues')
+      navigate('/')
     } catch {
       setError('Failed to save profile. Please try again.')
     } finally {
