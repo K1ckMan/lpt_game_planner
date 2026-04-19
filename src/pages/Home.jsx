@@ -112,9 +112,9 @@ export default function Home() {
 
   async function confirmBook() {
     if (!selected || !selectedCourt) return
-    if (isBooked(selected.date, selected.time)) return
+    if (isBooked(selected.date, selected.time, selected.courts)) return
     setSubmitting(true)
-    const mockLink = `https://app.playtomic.io/booking/${Math.random().toString(36).slice(2, 10)}`
+    const mockLink = `https://app.playtomic.io/booking/${Math.random().toString(36).slice(2, 10)}?court=${encodeURIComponent(selectedCourt.court_id)}`
     const { data } = await supabase
       .from('simple_bookings')
       .insert({
@@ -137,14 +137,12 @@ export default function Home() {
     const booking = bookings.find((b) => b.id === id)
     const bStart = toMinutes(booking.time)
     const bEnd = bStart + 90
-    // Cancel all user's bookings that overlap with this one
-    const overlapping = bookings.filter((b) =>
-      b.user_id === user.uid &&
-      b.date === booking.date &&
-      b.status !== 'cancelled' &&
-      toMinutes(b.time) < bEnd &&
-      toMinutes(b.time) + 90 > bStart
-    )
+    const bookedCourt = courtIdFromLink(booking.playtomic_link)
+    const overlapping = bookings.filter((b) => {
+      if (b.user_id !== user.uid || b.date !== booking.date || b.status === 'cancelled') return false
+      const sameCourt = !bookedCourt || !courtIdFromLink(b.playtomic_link) || courtIdFromLink(b.playtomic_link) === bookedCourt
+      return sameCourt && toMinutes(b.time) < bEnd && toMinutes(b.time) + 90 > bStart
+    })
     await Promise.all(
       overlapping.map((b) =>
         supabase.from('simple_bookings').update({ status: 'cancelled' }).eq('id', b.id)
@@ -159,15 +157,25 @@ export default function Home() {
     return h * 60 + m
   }
 
-  function isBooked(date, time) {
+  function courtIdFromLink(link) {
+    try { return new URL(link).searchParams.get('court') } catch { return null }
+  }
+
+  // A slot is booked only if ALL its courts are overlapped by existing bookings
+  function isBooked(date, time, slotCourts) {
+    if (!slotCourts?.length) return false
     const slotStart = toMinutes(time)
     const slotEnd = slotStart + 90
-    return bookings.some((b) => {
-      if (b.date !== date || b.status === 'cancelled') return false
-      const bStart = toMinutes(b.time)
-      const bEnd = bStart + 90
-      return slotStart < bEnd && slotEnd > bStart
-    })
+    return slotCourts.every((sc) =>
+      bookings.some((b) => {
+        if (b.date !== date || b.status === 'cancelled') return false
+        const bookedCourtId = courtIdFromLink(b.playtomic_link)
+        if (bookedCourtId && bookedCourtId !== sc.court_id) return false
+        const bStart = toMinutes(b.time)
+        const bEnd = bStart + 90
+        return slotStart < bEnd && slotEnd > bStart
+      })
+    )
   }
 
   return (
@@ -198,7 +206,7 @@ export default function Home() {
                 ) : (
                   <div className="px-4 py-3 flex flex-wrap gap-2">
                     {times.map(({ time, courts }) => {
-                      const booked = isBooked(date, time)
+                      const booked = isBooked(date, time, courts)
                       const isActive = selected?.date === date && selected?.time === time
                       return (
                         <button
