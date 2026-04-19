@@ -112,6 +112,7 @@ export default function Home() {
 
   async function confirmBook() {
     if (!selected || !selectedCourt) return
+    if (isBooked(selected.date, selected.time)) return
     setSubmitting(true)
     const mockLink = `https://app.playtomic.io/booking/${Math.random().toString(36).slice(2, 10)}`
     const { data } = await supabase
@@ -133,8 +134,15 @@ export default function Home() {
 
   async function cancelBooking(id) {
     setCancelling(id)
-    await supabase.from('simple_bookings').update({ status: 'cancelled' }).eq('id', id)
-    await loadBookings()
+    const booking = bookings.find((b) => b.id === id)
+    await supabase
+      .from('simple_bookings')
+      .update({ status: 'cancelled' })
+      .eq('user_id', user.uid)
+      .eq('date', booking.date)
+      .eq('time', booking.time)
+      .neq('status', 'cancelled')
+    await Promise.all([loadBookings(), loadSlots()])
     setCancelling(null)
   }
 
