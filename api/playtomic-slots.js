@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       const localStartMax = `${date}T22:00:00`
 
       const availResp = await fetch(
-        `https://api.playtomic.io/v1/availability?user_id=me&tenant_id=${TENANT_ID}&sport_id=${SPORT_ID}&local_start_min=${localStartMin}&local_start_max=${localStartMax}&duration=90`,
+        `https://api.playtomic.io/v1/availability?user_id=me&tenant_id=${TENANT_ID}&sport_id=${SPORT_ID}&local_start_min=${localStartMin}&local_start_max=${localStartMax}`,
         { headers: HEADERS }
       )
       if (!availResp.ok) {
@@ -58,21 +58,30 @@ export default async function handler(req, res) {
         continue
       }
 
+      // slotsByTime[time][courtId] = best slot (prefer 90-min, fallback to closest)
       const slotsByTime = {}
       for (const resource of resources) {
         const courtId = resource.resource_id
         const courtName = courtNames[courtId] || courtId.substring(0, 6)
 
+        // Group by start_time, pick preferred duration
+        const byTime = {}
         for (const slot of resource.slots || []) {
-          if (slot.duration !== 90) continue
           const time = slot.start_time?.substring(0, 5)
           if (!time || time < '17:00' || time >= '22:00') continue
+          if (!byTime[time]) byTime[time] = []
+          byTime[time].push(slot)
+        }
 
+        for (const [time, timeSlots] of Object.entries(byTime)) {
+          const slot90 = timeSlots.find(s => s.duration === 90)
+          const best = slot90 || timeSlots.sort((a, b) => Math.abs(a.duration - 90) - Math.abs(b.duration - 90))[0]
           if (!slotsByTime[time]) slotsByTime[time] = []
           slotsByTime[time].push({
             court_id: courtId,
             court_name: courtName,
-            price: slot.price,
+            duration: best.duration,
+            price: best.price,
           })
         }
       }

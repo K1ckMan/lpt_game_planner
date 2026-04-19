@@ -178,7 +178,7 @@ export default function Home() {
                               <div className="flex flex-wrap gap-1.5">
                                 {courts.map((c, i) => (
                                   <span key={i} className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">
-                                    {c.club_name} · {c.court_name}
+                                    {c.court_name} · {c.duration} min · {c.price}
                                   </span>
                                 ))}
                               </div>
