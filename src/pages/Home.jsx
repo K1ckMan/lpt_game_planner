@@ -222,7 +222,7 @@ export default function Home() {
                         )}
                       </div>
                     </div>
-                    {isOwn && b.playtomic_link && b.status !== 'cancelled' && (
+                    {b.playtomic_link && b.status !== 'cancelled' && (
                       <button
                         onClick={() => setShareBooking(b)}
                         className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
