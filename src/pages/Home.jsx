@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
@@ -93,33 +93,9 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [shareBooking, setShareBooking] = useState(null)
-  const seenLinks = useRef(new Set())
-
   const upcomingSlots = getUpcomingSlots(5)
 
-  useEffect(() => {
-    loadBookings()
-
-    // Realtime: watch for confirmed booking with playtomic_link
-    const ch = supabase
-      .channel('my-bookings')
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'simple_bookings',
-        filter: `user_id=eq.${user.uid}`,
-      }, (payload) => {
-        const b = payload.new
-        if (b.playtomic_link && b.status === 'confirmed' && !seenLinks.current.has(b.id)) {
-          seenLinks.current.add(b.id)
-          setShareBooking(b)
-        }
-        setBookings((prev) => prev.map((x) => x.id === b.id ? b : x))
-      })
-      .subscribe()
-
-    return () => supabase.removeChannel(ch)
-  }, [])
+  useEffect(() => { loadBookings() }, [])
 
   async function loadBookings() {
     const { data } = await supabase
@@ -134,15 +110,22 @@ export default function Home() {
   async function confirmBook() {
     if (!selected) return
     setSubmitting(true)
-    await supabase.from('simple_bookings').insert({
-      user_id: user.uid,
-      date: selected.date,
-      time: selected.time,
-      status: 'pending',
-    })
+    // Mock Playtomic link — replace with real API call when ready
+    const mockLink = `https://app.playtomic.io/booking/${Math.random().toString(36).slice(2, 10)}`
+    const { data } = await supabase
+      .from('simple_bookings')
+      .insert({
+        user_id: user.uid,
+        date: selected.date,
+        time: selected.time,
+        status: 'confirmed',
+        playtomic_link: mockLink,
+      })
+      .select().single()
     await loadBookings()
     setSelected(null)
     setSubmitting(false)
+    if (data) setShareBooking(data)
   }
 
   async function cancelBooking(id) {
