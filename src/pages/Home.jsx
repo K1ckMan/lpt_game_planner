@@ -170,40 +170,28 @@ export default function Home() {
                 {times.length === 0 ? (
                   <p className="px-4 py-3 text-xs text-gray-400">No slots this day</p>
                 ) : (
-                  <div className="divide-y divide-gray-50">
+                  <div className="px-4 py-3 flex flex-wrap gap-2">
                     {times.map(({ time, courts }) => {
                       const booked = isBooked(date, time)
                       const isActive = selected?.date === date && selected?.time === time
                       return (
-                        <div key={time} className="px-4 py-2.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-wrap gap-1.5">
-                                {courts.map((c, i) => (
-                                  <span key={i} className="text-xs text-gray-500 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded">
-                                    {c.court_name} · {c.duration} min · {c.price}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                if (booked) return
-                                if (isActive) { setSelected(null); setSelectedCourt(null) }
-                                else { setSelected({ date, time, courts }); setSelectedCourt(courts.length === 1 ? courts[0] : null) }
-                              }}
-                              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                                booked
-                                  ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
-                                  : isActive
-                                  ? 'bg-emerald-600 text-white border-emerald-600'
-                                  : 'border-gray-200 text-gray-700 hover:border-emerald-400'
-                              }`}
-                            >
-                              {time}
-                            </button>
-                          </div>
-                        </div>
+                        <button
+                          key={time}
+                          onClick={() => {
+                            if (booked) return
+                            if (isActive) { setSelected(null); setSelectedCourt(null) }
+                            else { setSelected({ date, time, courts }); setSelectedCourt(courts.length === 1 ? courts[0] : null) }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                            booked
+                              ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
+                              : isActive
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'border-gray-200 text-gray-700 hover:border-emerald-400'
+                          }`}
+                        >
+                          {time}
+                        </button>
                       )
                     })}
                   </div>
