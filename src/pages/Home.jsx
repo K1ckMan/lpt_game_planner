@@ -77,6 +77,7 @@ export default function Home() {
   const [slots, setSlots] = useState([])
   const [slotsLoading, setSlotsLoading] = useState(true)
   const [selected, setSelected] = useState(null)
+  const [selectedCourt, setSelectedCourt] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [shareBooking, setShareBooking] = useState(null)
@@ -110,9 +111,8 @@ export default function Home() {
   }
 
   async function confirmBook() {
-    if (!selected) return
+    if (!selected || !selectedCourt) return
     setSubmitting(true)
-    // Mock Playtomic link — replace with real API call when ready
     const mockLink = `https://app.playtomic.io/booking/${Math.random().toString(36).slice(2, 10)}`
     const { data } = await supabase
       .from('simple_bookings')
@@ -122,10 +122,13 @@ export default function Home() {
         time: selected.time,
         status: 'confirmed',
         playtomic_link: mockLink,
+        court_id: selectedCourt.court_id,
+        court_name: selectedCourt.court_name,
       })
       .select().single()
     await loadBookings()
     setSelected(null)
+    setSelectedCourt(null)
     setSubmitting(false)
     if (data) setShareBooking(data)
   }
@@ -184,7 +187,11 @@ export default function Home() {
                               </div>
                             </div>
                             <button
-                              onClick={() => !booked && setSelected(isActive ? null : { date, time, courts })}
+                              onClick={() => {
+                                if (booked) return
+                                if (isActive) { setSelected(null); setSelectedCourt(null) }
+                                else { setSelected({ date, time, courts }); setSelectedCourt(courts.length === 1 ? courts[0] : null) }
+                              }}
                               className={`shrink-0 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                                 booked
                                   ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-default'
@@ -203,21 +210,41 @@ export default function Home() {
                 )}
 
                 {selected?.date === date && (
-                  <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-emerald-800">
-                        {selected.time} – {addMinutes(selected.time, 90)}
-                      </p>
-                      <p className="text-xs text-emerald-600">1.5h</p>
+                  <div className="px-4 py-3 bg-emerald-50 border-t border-emerald-100 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-emerald-800">
+                          {selected.time} – {addMinutes(selected.time, 90)}
+                        </p>
+                        <p className="text-xs text-emerald-600">1.5h</p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button onClick={() => { setSelected(null); setSelectedCourt(null) }} className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100">
+                          Cancel
+                        </button>
+                        <button onClick={confirmBook} disabled={submitting || !selectedCourt} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                          {submitting ? '...' : 'Book'}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <button onClick={() => setSelected(null)} className="px-3 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-100">
-                        Cancel
-                      </button>
-                      <button onClick={confirmBook} disabled={submitting} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-                        {submitting ? '...' : 'Book'}
-                      </button>
-                    </div>
+
+                    {selected.courts?.length > 1 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selected.courts.map((c, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setSelectedCourt(c)}
+                            className={`text-xs px-2.5 py-1 rounded-lg border transition-colors ${
+                              selectedCourt?.court_id === c.court_id
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                            }`}
+                          >
+                            {c.court_name} · {c.price}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
