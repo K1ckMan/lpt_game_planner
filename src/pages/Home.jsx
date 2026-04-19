@@ -102,6 +102,7 @@ export default function Home() {
       .from('simple_bookings')
       .select('*')
       .order('date', { ascending: false })
+      .order('time', { ascending: false })
     setBookings(data || [])
     setLoading(false)
   }
@@ -195,47 +196,96 @@ export default function Home() {
           ))}
         </div>
 
-        {!loading && bookings.length > 0 && (
-          <>
-            <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">History</h2>
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              {bookings.map((b) => {
-                const dateStr = b.date ? b.date.split('-').reverse().join('.') : ''
-                const endTime = addMinutes(b.time, 90)
-                const isOwn = b.user_id === user.uid
-                return (
-                  <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm text-gray-800">{dateStr} · {b.time} – {endTime}</p>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[b.status] || ''}`}>
-                          {STATUS_LABEL[b.status] || b.status}
-                        </span>
-                        {isOwn && b.status !== 'cancelled' && (
-                          <button
-                            onClick={() => cancelBooking(b.id)}
-                            disabled={cancelling === b.id}
-                            className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                          >
-                            {cancelling === b.id ? '...' : 'Cancel'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {b.playtomic_link && b.status !== 'cancelled' && (
-                      <button
-                        onClick={() => setShareBooking(b)}
-                        className="mt-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Share game link →
-                      </button>
-                    )}
+        {!loading && (() => {
+          const today = new Date().toISOString().split('T')[0]
+          const myUpcoming = bookings.filter((b) => b.user_id === user.uid && b.status !== 'cancelled' && b.date >= today)
+          const history = bookings.filter((b) => b.date < today || b.status === 'cancelled')
+
+          return (
+            <>
+              {myUpcoming.length > 0 && (
+                <>
+                  <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">My Games</h2>
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8">
+                    {myUpcoming.map((b) => {
+                      const dateStr = b.date ? b.date.split('-').reverse().join('.') : ''
+                      const endTime = addMinutes(b.time, 90)
+                      return (
+                        <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{formatDate(b.date)}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">{b.time} – {endTime} · 1.5h</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {b.playtomic_link && (
+                                <button
+                                  onClick={() => setShareBooking(b)}
+                                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                                >
+                                  Share →
+                                </button>
+                              )}
+                              <button
+                                onClick={() => cancelBooking(b.id)}
+                                disabled={cancelling === b.id}
+                                className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                              >
+                                {cancelling === b.id ? '...' : 'Cancel'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
-          </>
-        )}
+                </>
+              )}
+
+              {history.length > 0 && (
+                <>
+                  <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">History</h2>
+                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    {history.map((b) => {
+                      const dateStr = b.date ? b.date.split('-').reverse().join('.') : ''
+                      const endTime = addMinutes(b.time, 90)
+                      const isOwn = b.user_id === user.uid
+                      return (
+                        <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm text-gray-800">{dateStr} · {b.time} – {endTime}</p>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {isOwn && b.playtomic_link && b.status !== 'cancelled' && (
+                                <button
+                                  onClick={() => setShareBooking(b)}
+                                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                                >
+                                  Share →
+                                </button>
+                              )}
+                              <span className={`text-xs px-2 py-0.5 rounded ${STATUS_CLASS[b.status] || ''}`}>
+                                {STATUS_LABEL[b.status] || b.status}
+                              </span>
+                              {isOwn && b.status !== 'cancelled' && (
+                                <button
+                                  onClick={() => cancelBooking(b.id)}
+                                  disabled={cancelling === b.id}
+                                  className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                                >
+                                  {cancelling === b.id ? '...' : 'Cancel'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )
+        })()}
 
       </div>
       <Footer />
