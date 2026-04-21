@@ -510,38 +510,45 @@ export default function Home() {
                                 <p className="text-xs text-emerald-700 mt-1">Result: {scoreSummary}</p>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {b.playtomic_link && (
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => setShareBooking(b)}
-                                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                                  onClick={() => setConfirmBooking(b)}
+                                  disabled={Boolean(result)}
+                                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
                                 >
-                                  Share →
+                                  {result ? 'Confirmed' : 'Confirm'}
                                 </button>
-                              )}
-                              <button
-                                onClick={() => setConfirmBooking(b)}
-                                disabled={Boolean(result)}
-                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
-                              >
-                                {result ? 'Confirmed' : 'Confirm'}
-                              </button>
-                              {result && (
                                 <button
-                                  onClick={() => repostResultToWhatsApp(b)}
-                                  disabled={repostingId === b.id}
-                                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
+                                  onClick={() => cancelBooking(b.id)}
+                                  disabled={cancelling === b.id}
+                                  className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
                                 >
-                                  {repostingId === b.id ? '...' : 'Repost WhatsApp'}
+                                  {cancelling === b.id ? '...' : 'Cancel'}
                                 </button>
+                              </div>
+
+                              {(b.playtomic_link || result) && (
+                                <div className="flex items-center gap-2">
+                                  {b.playtomic_link && (
+                                    <button
+                                      onClick={() => setShareBooking(b)}
+                                      className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                                    >
+                                      Share →
+                                    </button>
+                                  )}
+                                  {result && (
+                                    <button
+                                      onClick={() => repostResultToWhatsApp(b)}
+                                      disabled={repostingId === b.id}
+                                      className="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                      {repostingId === b.id ? '...' : 'Repost WhatsApp'}
+                                    </button>
+                                  )}
+                                </div>
                               )}
-                              <button
-                                onClick={() => cancelBooking(b.id)}
-                                disabled={cancelling === b.id}
-                                className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                              >
-                                {cancelling === b.id ? '...' : 'Cancel'}
-                              </button>
                             </div>
                           </div>
                         </div>
