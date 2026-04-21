@@ -9,6 +9,19 @@ function emptySets() {
   ]
 }
 
+function normalizeSets(rawSets) {
+  const defaults = emptySets()
+  if (!Array.isArray(rawSets)) return defaults
+  return defaults.map((set, index) => {
+    const source = rawSets[index] || {}
+    return {
+      ...set,
+      home: source.home === 0 || source.home ? String(source.home) : '',
+      away: source.away === 0 || source.away ? String(source.away) : '',
+    }
+  })
+}
+
 function teamLabel(team) {
   if (!team) return ''
   return `${team.player1} / ${team.player2}`
@@ -30,17 +43,27 @@ function findTeamIndex(teams, team) {
   return teams.findIndex((item) => teamKey(item) === teamKey(team))
 }
 
-export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
+export default function ConfirmResultModal({
+  booking,
+  onClose,
+  onConfirm,
+  initialResult = null,
+  initialPhotoPreview = '',
+}) {
   const defaultMatchup = getMatchupForBooking(booking)
   const divisions = Object.keys(DIVISION_TEAMS)
+  const isEditing = Boolean(initialResult)
+  const initialDivision = initialResult?.division || defaultMatchup?.division || divisions[0] || ''
+  const initialHomeTeam = initialResult?.homeTeam || defaultMatchup?.homeTeam || null
+  const initialAwayTeam = initialResult?.awayTeam || defaultMatchup?.awayTeam || null
 
-  const [selectedDivision, setSelectedDivision] = useState(defaultMatchup?.division || divisions[0] || '')
+  const [selectedDivision, setSelectedDivision] = useState(initialDivision)
   const [homeQuery, setHomeQuery] = useState('')
   const [awayQuery, setAwayQuery] = useState('')
-  const [homeTeam, setHomeTeam] = useState(defaultMatchup?.homeTeam || null)
-  const [awayTeam, setAwayTeam] = useState(defaultMatchup?.awayTeam || null)
-  const [sets, setSets] = useState(emptySets())
-  const [photoPreview, setPhotoPreview] = useState('')
+  const [homeTeam, setHomeTeam] = useState(initialHomeTeam)
+  const [awayTeam, setAwayTeam] = useState(initialAwayTeam)
+  const [sets, setSets] = useState(() => normalizeSets(initialResult?.sets))
+  const [photoPreview, setPhotoPreview] = useState(initialPhotoPreview || '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
@@ -127,7 +150,7 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
       return
     }
 
-    if (!photoPreview) {
+    if (!photoPreview && !isEditing) {
       setError('Please upload a photo.')
       return
     }
@@ -154,7 +177,7 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
       <div className="bg-white rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl">
         <div className="px-5 pt-5 pb-4 border-b border-gray-100">
           <p className="text-xs text-gray-400 uppercase tracking-wide">My Games</p>
-          <h2 className="text-lg font-semibold text-gray-900">Confirm Result</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{isEditing ? 'Edit Result' : 'Confirm Result'}</h2>
         </div>
 
         <div className="px-5 py-4 space-y-4">
@@ -326,7 +349,7 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
             disabled={saving}
             className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Confirm'}
+            {saving ? 'Saving...' : isEditing ? 'Save' : 'Confirm'}
           </button>
         </div>
       </div>

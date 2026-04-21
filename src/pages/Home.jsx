@@ -512,13 +512,24 @@ export default function Home() {
                             </div>
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => setConfirmBooking(b)}
-                                  disabled={Boolean(result)}
-                                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
-                                >
-                                  {result ? 'Confirmed' : 'Confirm'}
-                                </button>
+                                {result ? (
+                                  <>
+                                    <span className="text-xs text-emerald-700 font-medium">Confirmed</span>
+                                    <button
+                                      onClick={() => setConfirmBooking(b)}
+                                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                    >
+                                      Edit
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() => setConfirmBooking(b)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                  >
+                                    Confirm
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => cancelBooking(b.id)}
                                   disabled={cancelling === b.id}
@@ -613,6 +624,8 @@ export default function Home() {
       {confirmBooking && (
         <ConfirmResultModal
           booking={confirmBooking}
+          initialResult={resultsByBookingId[confirmBooking.id] || null}
+          initialPhotoPreview={resultPhotosByBookingId[confirmBooking.id] || ''}
           onClose={() => setConfirmBooking(null)}
           onConfirm={(payload) => handleConfirmResult(confirmBooking.id, payload)}
         />
