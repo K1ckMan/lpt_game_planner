@@ -87,6 +87,75 @@ function fileFromDataUrl(dataUrl, fileName) {
   return new File([bytes], fileName, { type: mime })
 }
 
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = dataUrl
+  })
+}
+
+async function buildOverlayImageDataUrl(photoDataUrl, result) {
+  if (!photoDataUrl || !result) return null
+
+  try {
+    const image = await loadImage(photoDataUrl)
+    const canvas = document.createElement('canvas')
+    const width = image.naturalWidth || image.width
+    const height = image.naturalHeight || image.height
+    if (!width || !height) return null
+
+    canvas.width = width
+    canvas.height = height
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+
+    ctx.drawImage(image, 0, 0, width, height)
+
+    const barHeight = Math.max(48, Math.round(height * 0.1))
+    const y = height - barHeight
+    const scoreText = (result.sets || []).map((set) => `${set.home ?? '-'}:${set.away ?? '-'}`).join('  ')
+    const matchText = `${result.homeTeam?.player1 || ''} / ${result.homeTeam?.player2 || ''} vs ${result.awayTeam?.player1 || ''} / ${result.awayTeam?.player2 || ''}`
+
+    const gradient = ctx.createLinearGradient(0, y, width, y)
+    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.92)')
+    gradient.addColorStop(1, 'rgba(20, 20, 20, 0.88)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, y, width, barHeight)
+
+    const padding = Math.round(width * 0.02)
+    const divisionFont = Math.max(12, Math.round(width * 0.018))
+    const lineFont = Math.max(11, Math.round(width * 0.016))
+    const scoreFont = Math.max(12, Math.round(width * 0.02))
+
+    ctx.textBaseline = 'top'
+    ctx.font = `700 ${divisionFont}px Arial`
+    ctx.fillStyle = '#b9f56b'
+    ctx.fillText(result.division || 'Division', padding, y + Math.max(4, Math.round(barHeight * 0.08)))
+
+    ctx.font = `600 ${lineFont}px Arial`
+    ctx.fillStyle = '#ffffff'
+    const textY = y + Math.max(18, Math.round(barHeight * 0.45))
+    const textWidthLimit = Math.max(120, Math.round(width * 0.67))
+    let trimmedMatchText = matchText
+    while (ctx.measureText(trimmedMatchText).width > textWidthLimit && trimmedMatchText.length > 10) {
+      trimmedMatchText = `${trimmedMatchText.slice(0, -2)}…`
+    }
+    ctx.fillText(trimmedMatchText, padding, textY)
+
+    ctx.font = `700 ${scoreFont}px Arial`
+    const scoreWidth = ctx.measureText(scoreText).width
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(scoreText, width - padding - scoreWidth, y + Math.max(12, Math.round(barHeight * 0.35)))
+
+    return canvas.toDataURL('image/png')
+  } catch {
+    return null
+  }
+}
+
 function ShareModal({ booking, onClose }) {
   const [copied, setCopied] = useState(false)
   const dateStr = booking.date ? booking.date.split('-').reverse().join('.') : ''
@@ -296,7 +365,8 @@ export default function Home() {
     const text = resultMessage(result, booking)
     const shareUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
     const photoPreview = resultPhotosByBookingId[booking.id] || result.photoPreview
-    const photoFile = fileFromDataUrl(photoPreview, `match-result-${booking.id}.png`)
+    const overlayPhotoPreview = await buildOverlayImageDataUrl(photoPreview, result)
+    const photoFile = fileFromDataUrl(overlayPhotoPreview || photoPreview, `match-result-${booking.id}.png`)
 
     setRepostingId(booking.id)
     try {
