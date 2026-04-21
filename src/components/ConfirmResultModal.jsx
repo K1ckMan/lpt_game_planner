@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { getMatchupForBooking } from '../lib/divisionTeams'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DIVISION_TEAMS, getMatchupForBooking } from '../lib/divisionTeams'
 
 function emptySets() {
   return [
@@ -9,13 +9,56 @@ function emptySets() {
   ]
 }
 
+function teamLabel(team) {
+  if (!team) return ''
+  return `${team.player1} / ${team.player2}`
+}
+
+function teamKey(team) {
+  if (!team) return ''
+  return `${team.player1}|${team.player2}`
+}
+
+function matchesTeam(team, query) {
+  if (!query.trim()) return true
+  const q = query.trim().toLowerCase()
+  return teamLabel(team).toLowerCase().includes(q)
+}
+
+function findTeamIndex(teams, team) {
+  if (!team || !Array.isArray(teams)) return -1
+  return teams.findIndex((item) => teamKey(item) === teamKey(team))
+}
+
 export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
-  const matchup = getMatchupForBooking(booking)
+  const defaultMatchup = getMatchupForBooking(booking)
+  const divisions = Object.keys(DIVISION_TEAMS)
+
+  const [selectedDivision, setSelectedDivision] = useState(defaultMatchup?.division || divisions[0] || '')
+  const [homeQuery, setHomeQuery] = useState('')
+  const [awayQuery, setAwayQuery] = useState('')
+  const [homeTeam, setHomeTeam] = useState(defaultMatchup?.homeTeam || null)
+  const [awayTeam, setAwayTeam] = useState(defaultMatchup?.awayTeam || null)
   const [sets, setSets] = useState(emptySets())
   const [photoPreview, setPhotoPreview] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
+
+  const divisionTeams = useMemo(() => DIVISION_TEAMS[selectedDivision] || [], [selectedDivision])
+
+  const homeOptions = useMemo(
+    () => divisionTeams.filter((team) => matchesTeam(team, homeQuery)).slice(0, 8),
+    [divisionTeams, homeQuery]
+  )
+
+  const awayOptions = useMemo(
+    () => divisionTeams
+      .filter((team) => teamKey(team) !== teamKey(homeTeam))
+      .filter((team) => matchesTeam(team, awayQuery))
+      .slice(0, 8),
+    [divisionTeams, homeTeam, awayQuery]
+  )
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -23,6 +66,32 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
       document.body.style.overflow = ''
     }
   }, [])
+
+  useEffect(() => {
+    if (!selectedDivision) return
+
+    const teams = DIVISION_TEAMS[selectedDivision] || []
+
+    setHomeTeam((prev) => {
+      const currentIndex = findTeamIndex(teams, prev)
+      return currentIndex >= 0 ? teams[currentIndex] : teams[0] || null
+    })
+
+    setAwayTeam((prev) => {
+      const currentIndex = findTeamIndex(teams, prev)
+      if (currentIndex >= 0) return teams[currentIndex]
+      const fallback = teams.find((team) => teamKey(team) !== teamKey(teams[0]))
+      return fallback || null
+    })
+  }, [selectedDivision])
+
+  useEffect(() => {
+    if (!homeTeam || !awayTeam) return
+    if (teamKey(homeTeam) !== teamKey(awayTeam)) return
+
+    const fallback = divisionTeams.find((team) => teamKey(team) !== teamKey(homeTeam))
+    setAwayTeam(fallback || null)
+  }, [homeTeam, awayTeam, divisionTeams])
 
   function updateSet(index, side, value) {
     setSets((prev) => prev.map((set, i) => (i === index ? { ...set, [side]: value } : set)))
@@ -42,8 +111,13 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
   async function handleConfirm() {
     setError('')
 
-    if (!matchup) {
-      setError('Could not load teams from the divisions file.')
+    if (!selectedDivision || !homeTeam || !awayTeam) {
+      setError('Please select division, your team and opponent team.')
+      return
+    }
+
+    if (teamKey(homeTeam) === teamKey(awayTeam)) {
+      setError('Your team and opponent team must be different.')
       return
     }
 
@@ -61,9 +135,9 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
     setSaving(true)
     try {
       await onConfirm({
-        division: matchup.division,
-        homeTeam: matchup.homeTeam,
-        awayTeam: matchup.awayTeam,
+        division: selectedDivision,
+        homeTeam,
+        awayTeam,
         sets,
         photoPreview,
       })
@@ -81,17 +155,83 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
         <div className="px-5 pt-5 pb-4 border-b border-gray-100">
           <p className="text-xs text-gray-400 uppercase tracking-wide">My Games</p>
           <h2 className="text-lg font-semibold text-gray-900">Confirm Result</h2>
-          {matchup ? (
-            <p className="text-xs text-gray-500 mt-1">
-              {matchup.division} · {matchup.homeTeam.player1} / {matchup.homeTeam.player2} vs {matchup.awayTeam.player1} / {matchup.awayTeam.player2}
-            </p>
-          ) : (
-            <p className="text-xs text-red-600 mt-1">No teams loaded from file.</p>
-          )}
         </div>
 
         <div className="px-5 py-4 space-y-4">
           {error && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Division</p>
+            <select
+              value={selectedDivision}
+              onChange={(event) => {
+                setSelectedDivision(event.target.value)
+                setHomeQuery('')
+                setAwayQuery('')
+              }}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+            >
+              {divisions.map((division) => (
+                <option key={division} value={division}>{division}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Your Team Search</p>
+            <input
+              value={homeQuery}
+              onChange={(event) => setHomeQuery(event.target.value)}
+              placeholder="Search your team"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="max-h-32 overflow-y-auto border border-gray-100 rounded-lg">
+              {homeOptions.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-gray-400">No teams found</p>
+              ) : (
+                homeOptions.map((team) => {
+                  const active = teamKey(team) === teamKey(homeTeam)
+                  return (
+                    <button
+                      key={teamKey(team)}
+                      onClick={() => setHomeTeam(team)}
+                      className={`w-full text-left px-3 py-2 text-sm border-b border-gray-50 last:border-0 ${active ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {teamLabel(team)}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Opponent Team Search</p>
+            <input
+              value={awayQuery}
+              onChange={(event) => setAwayQuery(event.target.value)}
+              placeholder="Search opponent team"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <div className="max-h-32 overflow-y-auto border border-gray-100 rounded-lg">
+              {awayOptions.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-gray-400">No teams found</p>
+              ) : (
+                awayOptions.map((team) => {
+                  const active = teamKey(team) === teamKey(awayTeam)
+                  return (
+                    <button
+                      key={teamKey(team)}
+                      onClick={() => setAwayTeam(team)}
+                      className={`w-full text-left px-3 py-2 text-sm border-b border-gray-50 last:border-0 ${active ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {teamLabel(team)}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </div>
 
           <div className="space-y-2">
             <p className="text-xs text-gray-400 uppercase tracking-wide">Set Scores</p>
@@ -147,34 +287,23 @@ export default function ConfirmResultModal({ booking, onClose, onConfirm }) {
             )}
           </div>
 
-          {photoPreview && matchup && (
+          {photoPreview && homeTeam && awayTeam && (
             <div className="rounded-xl overflow-hidden border border-gray-200">
               <div className="relative">
-                <img src={photoPreview} alt="Match" className="w-full h-64 object-cover" />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-r from-black/90 via-[#450d22]/85 to-[#8f2a40]/85 p-4">
-                  <div className="inline-flex items-center rounded bg-lime-400/90 text-[10px] font-semibold uppercase tracking-wide text-gray-900 px-2 py-1">
-                    {matchup.division}
+                <img src={photoPreview} alt="Match" className="w-full h-80 object-cover" />
+                <div className="absolute inset-x-0 bottom-0 h-[10%] bg-gradient-to-r from-black/90 via-black/80 to-black/85 px-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-lime-300 font-semibold uppercase leading-none">{selectedDivision}</p>
+                    <p className="text-[10px] text-white/90 truncate leading-none mt-1">
+                      {homeTeam.player1} / {homeTeam.player2} vs {awayTeam.player1} / {awayTeam.player2}
+                    </p>
                   </div>
-                  <div className="mt-2 flex items-end justify-between gap-3">
-                    <div className="text-white">
-                      <p className="text-sm font-semibold leading-tight">{matchup.homeTeam.player1}</p>
-                      <p className="text-sm font-semibold leading-tight">{matchup.homeTeam.player2}</p>
-                      <p className="text-xs text-white/70 mt-1 mb-1">vs</p>
-                      <p className="text-sm font-semibold leading-tight">{matchup.awayTeam.player1}</p>
-                      <p className="text-sm font-semibold leading-tight">{matchup.awayTeam.player2}</p>
-                    </div>
-                    <div className="space-y-1.5 shrink-0">
-                      {sets.map((set, index) => (
-                        <div key={index} className="flex gap-1.5 justify-end">
-                          <span className="w-8 h-8 rounded-xl bg-amber-500 text-white text-sm font-bold flex items-center justify-center border border-white/70">
-                            {set.home || '-'}
-                          </span>
-                          <span className="w-8 h-8 rounded-xl bg-transparent text-white text-sm font-bold flex items-center justify-center border border-white/80">
-                            {set.away || '-'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {sets.map((set, index) => (
+                      <span key={index} className="px-1.5 py-0.5 rounded border border-white/70 text-[10px] font-semibold text-white leading-none">
+                        {set.home || '-'}:{set.away || '-'}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>

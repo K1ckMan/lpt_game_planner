@@ -12,12 +12,35 @@ const STATUS_CLASS = {
   cancelled: 'text-red-600 bg-red-50',
 }
 const RESULT_STORAGE_KEY = 'lpt-game-results-v1'
+const MAX_RESULTS_STORAGE_SIZE = 1500000
+
+function slimResult(result) {
+  if (!result) return null
+  return {
+    division: result.division || '',
+    homeTeam: result.homeTeam || null,
+    awayTeam: result.awayTeam || null,
+    sets: Array.isArray(result.sets) ? result.sets : [],
+    confirmed_at: result.confirmed_at || null,
+  }
+}
 
 function readStoredResults() {
   if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(RESULT_STORAGE_KEY)
-    return raw ? JSON.parse(raw) : {}
+    if (!raw) return {}
+    if (raw.length > MAX_RESULTS_STORAGE_SIZE) {
+      window.localStorage.removeItem(RESULT_STORAGE_KEY)
+      return {}
+    }
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return {}
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .map(([bookingId, result]) => [bookingId, slimResult(result)])
+        .filter(([, result]) => Boolean(result))
+    )
   } catch {
     return {}
   }
@@ -126,6 +149,7 @@ export default function Home() {
   const [confirmBooking, setConfirmBooking] = useState(null)
   const [repostingId, setRepostingId] = useState(null)
   const [resultsByBookingId, setResultsByBookingId] = useState(readStoredResults)
+  const [resultPhotosByBookingId, setResultPhotosByBookingId] = useState({})
 
   useEffect(() => {
     loadBookings()
@@ -134,7 +158,19 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    window.localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(resultsByBookingId))
+    try {
+      const payload = JSON.stringify(
+        Object.fromEntries(
+          Object.entries(resultsByBookingId)
+            .map(([bookingId, result]) => [bookingId, slimResult(result)])
+            .filter(([, result]) => Boolean(result))
+        )
+      )
+      if (payload.length > MAX_RESULTS_STORAGE_SIZE) return
+      window.localStorage.setItem(RESULT_STORAGE_KEY, payload)
+    } catch {
+      // Ignore storage failures on devices with low quota.
+    }
   }, [resultsByBookingId])
 
   async function loadSlots() {
@@ -237,13 +273,20 @@ export default function Home() {
   }
 
   async function handleConfirmResult(bookingId, payload) {
+    const { photoPreview, ...resultData } = payload
     setResultsByBookingId((prev) => ({
       ...prev,
       [bookingId]: {
-        ...payload,
+        ...resultData,
         confirmed_at: new Date().toISOString(),
       },
     }))
+    if (photoPreview) {
+      setResultPhotosByBookingId((prev) => ({
+        ...prev,
+        [bookingId]: photoPreview,
+      }))
+    }
   }
 
   async function repostResultToWhatsApp(booking) {
@@ -252,7 +295,8 @@ export default function Home() {
 
     const text = resultMessage(result, booking)
     const shareUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
-    const photoFile = fileFromDataUrl(result.photoPreview, `match-result-${booking.id}.png`)
+    const photoPreview = resultPhotosByBookingId[booking.id] || result.photoPreview
+    const photoFile = fileFromDataUrl(photoPreview, `match-result-${booking.id}.png`)
 
     setRepostingId(booking.id)
     try {
