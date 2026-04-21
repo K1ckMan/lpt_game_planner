@@ -3,12 +3,24 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import ConfirmResultModal from '../components/ConfirmResultModal'
 
 const STATUS_LABEL = { pending: 'Pending', confirmed: 'Confirmed', cancelled: 'Cancelled' }
 const STATUS_CLASS = {
   pending:   'text-amber-700 bg-amber-50',
   confirmed: 'text-emerald-700 bg-emerald-50',
   cancelled: 'text-red-600 bg-red-50',
+}
+const RESULT_STORAGE_KEY = 'lpt-game-results-v1'
+
+function readStoredResults() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(RESULT_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
 }
 
 function formatDate(dateStr) {
@@ -20,6 +32,36 @@ function addMinutes(time, mins) {
   const [h, m] = time.split(':').map(Number)
   const total = h * 60 + m + mins
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+}
+
+function resultMessage(result, booking) {
+  if (!result) return ''
+  const score = (result.sets || []).map((set) => `${set.home}:${set.away}`).join('  ')
+  const dateStr = booking?.date ? booking.date.split('-').reverse().join('.') : ''
+  const timeStr = booking?.time || ''
+  return [
+    `🎾 ${result.division || 'Division'}`,
+    `${result.homeTeam?.player1 || ''} / ${result.homeTeam?.player2 || ''}`,
+    'vs',
+    `${result.awayTeam?.player1 || ''} / ${result.awayTeam?.player2 || ''}`,
+    `Score: ${score}`,
+    `${dateStr} ${timeStr}`.trim(),
+  ].filter(Boolean).join('\n')
+}
+
+function fileFromDataUrl(dataUrl, fileName) {
+  if (!dataUrl || typeof dataUrl !== 'string') return null
+  const parts = dataUrl.split(',')
+  if (parts.length !== 2) return null
+  const match = parts[0].match(/data:(.*?);base64/)
+  if (!match) return null
+  const mime = match[1] || 'image/png'
+  const binary = atob(parts[1])
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return new File([bytes], fileName, { type: mime })
 }
 
 function ShareModal({ booking, onClose }) {
@@ -81,11 +123,19 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false)
   const [cancelling, setCancelling] = useState(null)
   const [shareBooking, setShareBooking] = useState(null)
+  const [confirmBooking, setConfirmBooking] = useState(null)
+  const [repostingId, setRepostingId] = useState(null)
+  const [resultsByBookingId, setResultsByBookingId] = useState(readStoredResults)
 
   useEffect(() => {
     loadBookings()
     loadSlots()
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(resultsByBookingId))
+  }, [resultsByBookingId])
 
   async function loadSlots() {
     setSlotsLoading(true)
@@ -184,6 +234,45 @@ export default function Home() {
   function isBooked(date, time, slotCourts) {
     if (!slotCourts?.length) return false
     return getAvailableCourts(date, time, slotCourts).length === 0
+  }
+
+  async function handleConfirmResult(bookingId, payload) {
+    setResultsByBookingId((prev) => ({
+      ...prev,
+      [bookingId]: {
+        ...payload,
+        confirmed_at: new Date().toISOString(),
+      },
+    }))
+  }
+
+  async function repostResultToWhatsApp(booking) {
+    const result = resultsByBookingId[booking.id]
+    if (!result) return
+
+    const text = resultMessage(result, booking)
+    const shareUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+    const photoFile = fileFromDataUrl(result.photoPreview, `match-result-${booking.id}.png`)
+
+    setRepostingId(booking.id)
+    try {
+      if (
+        photoFile &&
+        typeof navigator !== 'undefined' &&
+        navigator.share &&
+        navigator.canShare?.({ files: [photoFile] })
+      ) {
+        try {
+          await navigator.share({ text, files: [photoFile] })
+          return
+        } catch {
+          // Fall back to direct WhatsApp link if user cancels or share fails.
+        }
+      }
+      window.open(shareUrl, '_blank', 'noopener,noreferrer')
+    } finally {
+      setRepostingId(null)
+    }
   }
 
   return (
@@ -294,14 +383,18 @@ export default function Home() {
                   <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">My Games</h2>
                   <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-8">
                     {myUpcoming.map((b) => {
-                      const dateStr = b.date ? b.date.split('-').reverse().join('.') : ''
                       const endTime = addMinutes(b.time, 90)
+                      const result = resultsByBookingId[b.id]
+                      const scoreSummary = result?.sets?.map((set) => `${set.home}:${set.away}`).join('  ')
                       return (
                         <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <p className="text-sm font-medium text-gray-900">{formatDate(b.date)}</p>
                               <p className="text-xs text-gray-500 mt-0.5">{b.time} – {endTime} · 1.5h</p>
+                              {result && (
+                                <p className="text-xs text-emerald-700 mt-1">Result: {scoreSummary}</p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {b.playtomic_link && (
@@ -310,6 +403,22 @@ export default function Home() {
                                   className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                                 >
                                   Share →
+                                </button>
+                              )}
+                              <button
+                                onClick={() => setConfirmBooking(b)}
+                                disabled={Boolean(result)}
+                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
+                              >
+                                {result ? 'Confirmed' : 'Confirm'}
+                              </button>
+                              {result && (
+                                <button
+                                  onClick={() => repostResultToWhatsApp(b)}
+                                  disabled={repostingId === b.id}
+                                  className="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
+                                >
+                                  {repostingId === b.id ? '...' : 'Repost WhatsApp'}
                                 </button>
                               )}
                               <button
@@ -378,6 +487,14 @@ export default function Home() {
 
       {shareBooking && (
         <ShareModal booking={shareBooking} onClose={() => setShareBooking(null)} />
+      )}
+
+      {confirmBooking && (
+        <ConfirmResultModal
+          booking={confirmBooking}
+          onClose={() => setConfirmBooking(null)}
+          onConfirm={(payload) => handleConfirmResult(confirmBooking.id, payload)}
+        />
       )}
     </div>
   )

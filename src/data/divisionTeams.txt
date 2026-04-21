@@ -1,0 +1,14 @@
+Bronze Division
+A.Ivanov B.Petrov
+D.Sokolov E.Orlov
+M.Krilov P.Smirnov
+
+Silver Division
+R.Kalnins J.Ozols
+T.Berzins K.Prieditis
+L.Zarins N.Balodis
+
+Gold Division
+V.Andrejevs I.Millers
+K.Eglitis R.Lacis
+S.Rubins A.Cirulis
