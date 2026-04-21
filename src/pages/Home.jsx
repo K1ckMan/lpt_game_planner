@@ -59,7 +59,7 @@ function addMinutes(time, mins) {
 
 function resultMessage(result, booking) {
   if (!result) return ''
-  const score = (result.sets || []).map((set) => `${set.home}:${set.away}`).join('  ')
+  const score = formatScore(result.sets)
   const dateStr = booking?.date ? booking.date.split('-').reverse().join('.') : ''
   const timeStr = booking?.time || ''
   return [
@@ -70,6 +70,14 @@ function resultMessage(result, booking) {
     `Score: ${score}`,
     `${dateStr} ${timeStr}`.trim(),
   ].filter(Boolean).join('\n')
+}
+
+function formatScore(sets) {
+  const normalized = Array.isArray(sets) ? sets : []
+  return normalized
+    .filter((set, index) => index < 2 || (set?.home !== '' && set?.away !== ''))
+    .map((set) => `${set?.home ?? '-'}:${set?.away ?? '-'}`)
+    .join('  ')
 }
 
 function fileFromDataUrl(dataUrl, fileName) {
@@ -116,7 +124,7 @@ async function buildOverlayImageDataUrl(photoDataUrl, result) {
 
     const barHeight = Math.max(48, Math.round(height * 0.1))
     const y = height - barHeight
-    const scoreText = (result.sets || []).map((set) => `${set.home ?? '-'}:${set.away ?? '-'}`).join('  ')
+    const scoreText = formatScore(result.sets)
     const matchText = `${result.homeTeam?.player1 || ''} / ${result.homeTeam?.player2 || ''} vs ${result.awayTeam?.player1 || ''} / ${result.awayTeam?.player2 || ''}`
 
     const gradient = ctx.createLinearGradient(0, y, width, y)
@@ -499,7 +507,7 @@ export default function Home() {
                     {myUpcoming.map((b) => {
                       const endTime = addMinutes(b.time, 90)
                       const result = resultsByBookingId[b.id]
-                      const scoreSummary = result?.sets?.map((set) => `${set.home}:${set.away}`).join('  ')
+                      const scoreSummary = formatScore(result?.sets)
                       return (
                         <div key={b.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
                           <div className="flex items-center justify-between gap-2">

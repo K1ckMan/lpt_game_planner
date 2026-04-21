@@ -22,6 +22,14 @@ function normalizeSets(rawSets) {
   })
 }
 
+function isSetFilled(set) {
+  return set?.home !== '' && set?.away !== ''
+}
+
+function hasAnySetValue(set) {
+  return set?.home !== '' || set?.away !== ''
+}
+
 function teamLabel(team) {
   if (!team) return ''
   return `${team.player1} / ${team.player2}`
@@ -144,9 +152,15 @@ export default function ConfirmResultModal({
       return
     }
 
-    const allSetsFilled = sets.every((set) => set.home !== '' && set.away !== '')
-    if (!allSetsFilled) {
-      setError('Please fill all 3 sets for both teams.')
+    const firstTwoFilled = isSetFilled(sets[0]) && isSetFilled(sets[1])
+    if (!firstTwoFilled) {
+      setError('Please fill scores for Set 1 and Set 2.')
+      return
+    }
+
+    const thirdSetPartial = hasAnySetValue(sets[2]) && !isSetFilled(sets[2])
+    if (thirdSetPartial) {
+      setError('If Set 3 is used, fill both scores.')
       return
     }
 
@@ -170,7 +184,10 @@ export default function ConfirmResultModal({
     }
   }
 
-  const scoreLine = sets.map((set) => `${set.home || '-'}:${set.away || '-'}`).join('  ')
+  const scoreLine = sets
+    .filter((set, index) => index < 2 || isSetFilled(set))
+    .map((set) => `${set.home || '-'}:${set.away || '-'}`)
+    .join('  ')
 
   return (
     <div className="fixed inset-0 bg-black/55 flex items-center justify-center p-4 z-50">
@@ -258,6 +275,12 @@ export default function ConfirmResultModal({
 
           <div className="space-y-2">
             <p className="text-xs text-gray-400 uppercase tracking-wide">Set Scores</p>
+            <div className="flex items-center gap-2">
+              <span className="w-12" />
+              <span className="w-16 text-[10px] text-gray-400 uppercase tracking-wide text-center">Your Team</span>
+              <span className="text-gray-200"> </span>
+              <span className="w-16 text-[10px] text-gray-400 uppercase tracking-wide text-center">Opponent Team</span>
+            </div>
             {sets.map((set, index) => (
               <div key={index} className="flex items-center gap-2">
                 <span className="w-12 text-xs text-gray-500">Set {index + 1}</span>
