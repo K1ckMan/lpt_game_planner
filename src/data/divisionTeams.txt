@@ -1,14 +1,47 @@
-Bronze Division
+GOLD DEVISION
+GOLD 1
 A.Ivanov B.Petrov
 D.Sokolov E.Orlov
 M.Krilov P.Smirnov
 
-Silver Division
+GOLD 2
+V.Andrejevs I.Millers
+K.Eglitis R.Lacis
+S.Rubins A.Cirulis
+
+GOLD 3
+T.Jansons L.Zelcs
+N.Balodis A.Zarins
+P.Kalnins M.Berzins
+
+SILVER DEVISION
+SILVER 1
 R.Kalnins J.Ozols
 T.Berzins K.Prieditis
 L.Zarins N.Balodis
 
-Gold Division
-V.Andrejevs I.Millers
-K.Eglitis R.Lacis
-S.Rubins A.Cirulis
+SILVER 2
+E.Strautins G.Briedis
+U.Timrots R.Bisenieks
+D.Gaile M.Pelcs
+
+SILVER 3
+A.Silins O.Plume
+I.Liepa J.Krumins
+K.Raitis V.Dukurs
+
+BRONZE DEVISION
+BRONZE 1
+M.Lacis A.Sulcs
+R.Vagalis J.Buka
+P.Romanovs E.Kaskins
+
+BRONZE 2
+B.Cakurs S.Noviks
+G.Baumanis T.Klintsons
+I.Znotins N.Brakmanis
+
+BRONZE 3
+A.Fomcenkovs A.Belokurs
+A.Sulcs R.Vagalis
+D.Kazaks O.Miezis

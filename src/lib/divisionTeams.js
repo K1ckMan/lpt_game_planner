@@ -1,33 +1,69 @@
 import rawDivisionTeams from '../data/divisionTeams.txt?raw'
 
-function parseTeamLine(line) {
-  const names = line.trim().split(/\s+/).filter(Boolean)
-  if (names.length < 2) return null
+function normalizeDivisionName(raw) {
+  const tier = String(raw || '').trim().split(/\s+/)[0]?.toUpperCase()
+  if (!tier) return ''
+  return `${tier} DIVISION`
+}
+
+function parseTeamLine(line, groupName, index) {
+  const cleaned = String(line || '').trim()
+  if (!cleaned) return null
+
+  let player1 = cleaned
+  let player2 = ''
+
+  if (cleaned.includes('/')) {
+    const [first, second] = cleaned.split('/').map((part) => part.trim()).filter(Boolean)
+    player1 = first || cleaned
+    player2 = second || ''
+  } else {
+    const tokens = cleaned.split(/\s+/).filter(Boolean)
+    if (tokens.length === 2 && tokens[0].includes('.') && tokens[1].includes('.')) {
+      player1 = tokens[0]
+      player2 = tokens[1]
+    }
+  }
+
+  const label = player2 ? `${player1} / ${player2}` : player1
   return {
-    player1: names[0],
-    player2: names[1],
+    id: `${groupName}:${index + 1}`,
+    label,
+    player1,
+    player2,
   }
 }
 
 export function parseDivisionTeams(sourceText) {
   const source = typeof sourceText === 'string' ? sourceText : ''
   const result = {}
-  let currentDivision = null
+  let currentDivision = ''
+  let currentGroup = ''
 
   for (const rawLine of source.split(/\r?\n/)) {
     const line = rawLine.trim()
     if (!line) continue
 
-    if (/division$/i.test(line)) {
-      currentDivision = line
-      if (!result[currentDivision]) result[currentDivision] = []
+    const divisionMatch = line.match(/^(GOLD|SILVER|BRONZE)\s+(DIVISION|DEVISION)$/i)
+    if (divisionMatch) {
+      currentDivision = normalizeDivisionName(divisionMatch[0])
+      if (!result[currentDivision]) result[currentDivision] = {}
+      currentGroup = ''
       continue
     }
 
-    if (!currentDivision) continue
+    const groupMatch = line.match(/^(GOLD|SILVER|BRONZE)\s+\d+$/i)
+    if (groupMatch && currentDivision) {
+      currentGroup = line.toUpperCase()
+      if (!result[currentDivision][currentGroup]) result[currentDivision][currentGroup] = []
+      continue
+    }
 
-    const team = parseTeamLine(line)
-    if (team) result[currentDivision].push(team)
+    if (!currentDivision || !currentGroup) continue
+
+    const teams = result[currentDivision][currentGroup]
+    const team = parseTeamLine(line, currentGroup, teams.length)
+    if (team) teams.push(team)
   }
 
   return result
@@ -50,8 +86,11 @@ export function getMatchupForBooking(booking) {
 
   const seed = hashString(`${booking.id}-${booking.date}-${booking.time}`)
   const division = divisions[seed % divisions.length]
-  const teams = DIVISION_TEAMS[division] || []
+  const groups = Object.keys(DIVISION_TEAMS[division] || {})
+  if (groups.length === 0) return null
 
+  const group = groups[seed % groups.length]
+  const teams = DIVISION_TEAMS[division][group] || []
   if (teams.length < 2) return null
 
   const homeIndex = seed % teams.length
@@ -59,6 +98,7 @@ export function getMatchupForBooking(booking) {
 
   return {
     division,
+    group,
     homeTeam: teams[homeIndex],
     awayTeam: teams[awayIndex],
   }

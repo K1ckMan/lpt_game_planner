@@ -32,23 +32,19 @@ function hasAnySetValue(set) {
 
 function teamLabel(team) {
   if (!team) return ''
-  return `${team.player1} / ${team.player2}`
+  if (team.label) return team.label
+  return [team.player1, team.player2].filter(Boolean).join(' / ')
 }
 
 function teamKey(team) {
   if (!team) return ''
-  return `${team.player1}|${team.player2}`
+  if (team.id) return team.id
+  return team.label || `${team.player1 || ''}|${team.player2 || ''}`
 }
 
-function matchesTeam(team, query) {
-  if (!query.trim()) return true
-  const q = query.trim().toLowerCase()
-  return teamLabel(team).toLowerCase().includes(q)
-}
-
-function findTeamIndex(teams, team) {
-  if (!team || !Array.isArray(teams)) return -1
-  return teams.findIndex((item) => teamKey(item) === teamKey(team))
+function findMatchingTeam(list, candidate) {
+  if (!candidate || !Array.isArray(list)) return null
+  return list.find((item) => teamKey(item) === teamKey(candidate)) || null
 }
 
 export default function ConfirmResultModal({
@@ -60,14 +56,25 @@ export default function ConfirmResultModal({
 }) {
   const defaultMatchup = getMatchupForBooking(booking)
   const divisions = Object.keys(DIVISION_TEAMS)
-  const isEditing = Boolean(initialResult)
-  const initialDivision = initialResult?.division || defaultMatchup?.division || divisions[0] || ''
-  const initialHomeTeam = initialResult?.homeTeam || defaultMatchup?.homeTeam || null
-  const initialAwayTeam = initialResult?.awayTeam || defaultMatchup?.awayTeam || null
 
+  const initialDivision = initialResult?.division || defaultMatchup?.division || divisions[0] || ''
+  const initialGroups = Object.keys(DIVISION_TEAMS[initialDivision] || {})
+  const initialGroup = initialResult?.group || defaultMatchup?.group || initialGroups[0] || ''
+  const initialTeams = DIVISION_TEAMS[initialDivision]?.[initialGroup] || []
+  const initialHomeTeam =
+    findMatchingTeam(initialTeams, initialResult?.homeTeam) ||
+    findMatchingTeam(initialTeams, defaultMatchup?.homeTeam) ||
+    initialTeams[0] ||
+    null
+  const initialAwayTeam =
+    findMatchingTeam(initialTeams, initialResult?.awayTeam) ||
+    findMatchingTeam(initialTeams, defaultMatchup?.awayTeam) ||
+    initialTeams.find((team) => teamKey(team) !== teamKey(initialHomeTeam)) ||
+    null
+
+  const isEditing = Boolean(initialResult)
   const [selectedDivision, setSelectedDivision] = useState(initialDivision)
-  const [homeQuery, setHomeQuery] = useState('')
-  const [awayQuery, setAwayQuery] = useState('')
+  const [selectedGroup, setSelectedGroup] = useState(initialGroup)
   const [homeTeam, setHomeTeam] = useState(initialHomeTeam)
   const [awayTeam, setAwayTeam] = useState(initialAwayTeam)
   const [sets, setSets] = useState(() => normalizeSets(initialResult?.sets))
@@ -76,19 +83,11 @@ export default function ConfirmResultModal({
   const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
 
-  const divisionTeams = useMemo(() => DIVISION_TEAMS[selectedDivision] || [], [selectedDivision])
-
-  const homeOptions = useMemo(
-    () => divisionTeams.filter((team) => matchesTeam(team, homeQuery)).slice(0, 8),
-    [divisionTeams, homeQuery]
-  )
-
+  const groupOptions = useMemo(() => Object.keys(DIVISION_TEAMS[selectedDivision] || {}), [selectedDivision])
+  const teamOptions = useMemo(() => DIVISION_TEAMS[selectedDivision]?.[selectedGroup] || [], [selectedDivision, selectedGroup])
   const awayOptions = useMemo(
-    () => divisionTeams
-      .filter((team) => teamKey(team) !== teamKey(homeTeam))
-      .filter((team) => matchesTeam(team, awayQuery))
-      .slice(0, 8),
-    [divisionTeams, homeTeam, awayQuery]
+    () => teamOptions.filter((team) => teamKey(team) !== teamKey(homeTeam)),
+    [teamOptions, homeTeam]
   )
 
   useEffect(() => {
@@ -100,29 +99,19 @@ export default function ConfirmResultModal({
 
   useEffect(() => {
     if (!selectedDivision) return
-
-    const teams = DIVISION_TEAMS[selectedDivision] || []
-
-    setHomeTeam((prev) => {
-      const currentIndex = findTeamIndex(teams, prev)
-      return currentIndex >= 0 ? teams[currentIndex] : teams[0] || null
-    })
-
-    setAwayTeam((prev) => {
-      const currentIndex = findTeamIndex(teams, prev)
-      if (currentIndex >= 0) return teams[currentIndex]
-      const fallback = teams.find((team) => teamKey(team) !== teamKey(teams[0]))
-      return fallback || null
-    })
-  }, [selectedDivision])
+    if (!groupOptions.includes(selectedGroup)) {
+      setSelectedGroup(groupOptions[0] || '')
+    }
+  }, [selectedDivision, groupOptions, selectedGroup])
 
   useEffect(() => {
-    if (!homeTeam || !awayTeam) return
-    if (teamKey(homeTeam) !== teamKey(awayTeam)) return
+    const matchedHome = findMatchingTeam(teamOptions, homeTeam) || teamOptions[0] || null
+    setHomeTeam(matchedHome)
 
-    const fallback = divisionTeams.find((team) => teamKey(team) !== teamKey(homeTeam))
-    setAwayTeam(fallback || null)
-  }, [homeTeam, awayTeam, divisionTeams])
+    const filteredAway = teamOptions.filter((team) => teamKey(team) !== teamKey(matchedHome))
+    const matchedAway = findMatchingTeam(filteredAway, awayTeam) || filteredAway[0] || null
+    setAwayTeam(matchedAway)
+  }, [selectedDivision, selectedGroup, teamOptions])
 
   function updateSet(index, side, value) {
     setSets((prev) => prev.map((set, i) => (i === index ? { ...set, [side]: value } : set)))
@@ -142,8 +131,8 @@ export default function ConfirmResultModal({
   async function handleConfirm() {
     setError('')
 
-    if (!selectedDivision || !homeTeam || !awayTeam) {
-      setError('Please select division, your team and opponent team.')
+    if (!selectedDivision || !selectedGroup || !homeTeam || !awayTeam) {
+      setError('Please select division, group, your team and opponent team.')
       return
     }
 
@@ -173,6 +162,7 @@ export default function ConfirmResultModal({
     try {
       await onConfirm({
         division: selectedDivision,
+        group: selectedGroup,
         homeTeam,
         awayTeam,
         sets,
@@ -204,11 +194,7 @@ export default function ConfirmResultModal({
             <p className="text-xs text-gray-400 uppercase tracking-wide">Division</p>
             <select
               value={selectedDivision}
-              onChange={(event) => {
-                setSelectedDivision(event.target.value)
-                setHomeQuery('')
-                setAwayQuery('')
-              }}
+              onChange={(event) => setSelectedDivision(event.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
             >
               {divisions.map((division) => (
@@ -218,59 +204,42 @@ export default function ConfirmResultModal({
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Your Team Search</p>
-            <input
-              value={homeQuery}
-              onChange={(event) => setHomeQuery(event.target.value)}
-              placeholder="Search your team"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-            <div className="max-h-32 overflow-y-auto border border-gray-100 rounded-lg">
-              {homeOptions.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-gray-400">No teams found</p>
-              ) : (
-                homeOptions.map((team) => {
-                  const active = teamKey(team) === teamKey(homeTeam)
-                  return (
-                    <button
-                      key={teamKey(team)}
-                      onClick={() => setHomeTeam(team)}
-                      className={`w-full text-left px-3 py-2 text-sm border-b border-gray-50 last:border-0 ${active ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      {teamLabel(team)}
-                    </button>
-                  )
-                })
-              )}
-            </div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Group</p>
+            <select
+              value={selectedGroup}
+              onChange={(event) => setSelectedGroup(event.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+            >
+              {groupOptions.map((group) => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Opponent Team Search</p>
-            <input
-              value={awayQuery}
-              onChange={(event) => setAwayQuery(event.target.value)}
-              placeholder="Search opponent team"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
-            <div className="max-h-32 overflow-y-auto border border-gray-100 rounded-lg">
-              {awayOptions.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-gray-400">No teams found</p>
-              ) : (
-                awayOptions.map((team) => {
-                  const active = teamKey(team) === teamKey(awayTeam)
-                  return (
-                    <button
-                      key={teamKey(team)}
-                      onClick={() => setAwayTeam(team)}
-                      className={`w-full text-left px-3 py-2 text-sm border-b border-gray-50 last:border-0 ${active ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      {teamLabel(team)}
-                    </button>
-                  )
-                })
-              )}
-            </div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Your Team</p>
+            <select
+              value={teamKey(homeTeam)}
+              onChange={(event) => setHomeTeam(teamOptions.find((team) => teamKey(team) === event.target.value) || null)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+            >
+              {teamOptions.map((team) => (
+                <option key={teamKey(team)} value={teamKey(team)}>{teamLabel(team)}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Opponent Team</p>
+            <select
+              value={teamKey(awayTeam)}
+              onChange={(event) => setAwayTeam(awayOptions.find((team) => teamKey(team) === event.target.value) || null)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+            >
+              {awayOptions.map((team) => (
+                <option key={teamKey(team)} value={teamKey(team)}>{teamLabel(team)}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">
@@ -339,9 +308,9 @@ export default function ConfirmResultModal({
                 <img src={photoPreview} alt="Match" className="w-full h-80 object-cover" />
                 <div className="absolute inset-x-0 bottom-0 h-[10%] bg-gradient-to-r from-black/90 via-black/80 to-black/85 px-2 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[10px] text-lime-300 font-semibold uppercase leading-none">{selectedDivision}</p>
+                    <p className="text-[10px] text-lime-300 font-semibold uppercase leading-none">{selectedGroup}</p>
                     <p className="text-[10px] text-white/90 truncate leading-none mt-1">
-                      {homeTeam.player1} / {homeTeam.player2} vs {awayTeam.player1} / {awayTeam.player2}
+                      {teamLabel(homeTeam)} vs {teamLabel(awayTeam)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

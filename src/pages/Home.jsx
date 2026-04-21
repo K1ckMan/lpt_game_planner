@@ -57,16 +57,22 @@ function addMinutes(time, mins) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }
 
+function teamDisplayName(team) {
+  if (!team) return ''
+  if (team.label) return team.label
+  return [team.player1, team.player2].filter(Boolean).join(' / ')
+}
+
 function resultMessage(result, booking) {
   if (!result) return ''
   const score = formatScore(result.sets)
   const dateStr = booking?.date ? booking.date.split('-').reverse().join('.') : ''
   const timeStr = booking?.time || ''
   return [
-    `🎾 ${result.division || 'Division'}`,
-    `${result.homeTeam?.player1 || ''} / ${result.homeTeam?.player2 || ''}`,
+    `🎾 ${[result.division, result.group].filter(Boolean).join(' · ') || 'Division'}`,
+    teamDisplayName(result.homeTeam),
     'vs',
-    `${result.awayTeam?.player1 || ''} / ${result.awayTeam?.player2 || ''}`,
+    teamDisplayName(result.awayTeam),
     `Score: ${score}`,
     `${dateStr} ${timeStr}`.trim(),
   ].filter(Boolean).join('\n')
@@ -125,7 +131,8 @@ async function buildOverlayImageDataUrl(photoDataUrl, result) {
     const barHeight = Math.max(48, Math.round(height * 0.1))
     const y = height - barHeight
     const scoreText = formatScore(result.sets)
-    const matchText = `${result.homeTeam?.player1 || ''} / ${result.homeTeam?.player2 || ''} vs ${result.awayTeam?.player1 || ''} / ${result.awayTeam?.player2 || ''}`
+    const matchText = `${teamDisplayName(result.homeTeam)} vs ${teamDisplayName(result.awayTeam)}`
+    const divisionText = [result.division, result.group].filter(Boolean).join(' · ') || 'Division'
 
     const gradient = ctx.createLinearGradient(0, y, width, y)
     gradient.addColorStop(0, 'rgba(0, 0, 0, 0.92)')
@@ -141,7 +148,7 @@ async function buildOverlayImageDataUrl(photoDataUrl, result) {
     ctx.textBaseline = 'top'
     ctx.font = `700 ${divisionFont}px Arial`
     ctx.fillStyle = '#b9f56b'
-    ctx.fillText(result.division || 'Division', padding, y + Math.max(4, Math.round(barHeight * 0.08)))
+    ctx.fillText(divisionText, padding, y + Math.max(4, Math.round(barHeight * 0.08)))
 
     ctx.font = `600 ${lineFont}px Arial`
     ctx.fillStyle = '#ffffff'
